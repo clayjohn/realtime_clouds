@@ -1,0 +1,310 @@
+#include <iostream>
+#include <stdlib.h> 
+
+// GLEW
+#define GLEW_STATIC
+#include <GL/glew.h>
+
+// GLFW
+#include <GLFW/glfw3.h>
+
+// Other includes
+#include "include/shader.h"
+#include <include/camera.h>
+
+// glm
+#include <include/glm/glm.hpp>
+#include <include/glm/gtc/matrix_transform.hpp>
+#include <include/glm/gtc/type_ptr.hpp>
+
+
+//callbacks
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+
+//function prototypes
+void Do_Movement();
+
+// Camera
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+bool keys[1024];
+GLfloat lastX = 400, lastY = 300;
+bool firstMouse = true;
+
+GLfloat deltaTime = 0.0f;
+GLfloat lastFrame = 0.0f;
+GLuint frames = 0;
+GLfloat timePassed = 0.0f;
+GLfloat startTime = 0.0f;
+glm::mat4 MVPM;
+
+
+// Window dimensions
+const GLuint WIDTH = 800, HEIGHT = 600;
+
+// The MAIN function, from here we start the application and run the game loop
+int main()
+{
+    // Init GLFW
+    glfwInit();
+    // Set all the required options for GLFW
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+    glfwWindowHint(GLFW_SAMPLES, 4);
+
+    // Create a GLFWwindow object that we can use for GLFW's functions
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Instanced Cubes", nullptr, nullptr);
+    glfwMakeContextCurrent(window);
+
+    // Set the required callback functions
+    glfwSetKeyCallback(window, key_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+
+    //glfw options
+    glfwSetWindowPos(window, 200, 17);//so you can see frame rate
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    // Set this to true so GLEW knows to use a modern approach to retrieving function pointers and extensions
+    glewExperimental = GL_TRUE;
+    // Initialize GLEW to setup the OpenGL Function pointers
+    glewInit();
+
+    // Define the viewport dimensions
+    glViewport(0, 0, WIDTH, HEIGHT);
+
+    //openGL options
+    glEnable(GL_MULTISAMPLE);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    //glEnable(GL_BLEND);
+    //glEnable(GL_PROGRAM_POINT_SIZE); 
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Build and compile our shader program
+    Shader ourShader("basic.vert", "basic.frag");
+
+
+    // Set up vertex data (and buffer(s)) and attribute pointers
+    GLfloat vertices[] = {
+        // Positions         // Colors            //texcoords
+        1.0f,  1.0f, -1.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, 0.0f,// back-top-right
+        1.0f, -1.0f, -1.0f,   1.0f, 0.0f, 0.0f,   1.0f, 0.0f, 0.0f,// back-bottom-right
+       -1.0f, -1.0f, -1.0f,   0.0f, 1.0f, 0.0f,   0.0f, 0.0f, 0.0f,// back-bottom-left
+       -1.0f,  1.0f, -1.0f,   0.0f, 0.0f, 1.0f,   0.0f, 1.0f, 0.0f,// back-top-left
+        1.0f, -1.0f,  1.0f,   1.0f, 1.0f, 0.0f,   1.0f, 0.0f, 1.0f,// front-bottom-right
+       -1.0f, -1.0f,  1.0f,   0.0f, 1.0f, 1.0f,   0.0f, 0.0f, 1.0f,// front-bottom-left
+       -1.0f,  1.0f,  1.0f,   1.0f, 0.0f, 1.0f,   0.0f, 1.0f, 1.0f,// front-top-left
+        1.0f,  1.0f,  1.0f,   1.0f, 0.0f, 1.0f,   1.0f, 1.0f, 1.0f // front-top-right
+    };
+    GLuint indices[] = {
+        0, 1, 3,//back face
+        1, 2, 3,
+        0, 7, 1,//right face
+        1, 7, 4,
+        2, 6, 3,//left face
+        5, 6, 2,
+        7, 6, 4,//front face
+        6, 5, 4,
+        3, 7, 0,//top face
+        3, 6, 7,
+        1, 4, 2,//bottom face
+        2, 4, 5
+    };
+
+    int length = 100000;
+    glm::mat4 *translations = new glm::mat4[length];
+    int index = 0; 
+    
+    for(GLint x = 0; x < length; x += 1) { 
+      glm::mat4 translation; 
+      GLfloat angle = 20.0f * x;
+      translation = glm::translate(translation, glm::vec3((GLfloat) (rand()%100), (GLfloat) (rand()%100), (GLfloat) (rand()%100)));
+      translation = glm::rotate(translation, angle, glm::vec3(1.0f, 0.3f, 0.5f));
+      translations[index++] = translation;
+    }
+
+    GLuint VBO, VAO, EBO, instanceVBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+    glGenBuffers(1, &instanceVBO); 
+    // Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO); 
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO); 
+    glBufferData(GL_ARRAY_BUFFER, sizeof(glm::mat4)*length, translations, GL_STATIC_DRAW); 
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // Position attribute
+    GLint posAttrib = glGetAttribLocation(ourShader.Program, "position");
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(posAttrib);
+    // Color attribute
+    GLint colAttrib = glGetAttribLocation(ourShader.Program, "color");
+    glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(colAttrib);
+
+    GLint texAttrib = glGetAttribLocation(ourShader.Program, "texCoords");
+    glVertexAttribPointer(texAttrib, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), (GLvoid*)(6 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(texAttrib);
+
+    // per-instance attributes
+    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+
+    GLint offAttrib = glGetAttribLocation(ourShader.Program, "model");
+    glVertexAttribPointer(offAttrib, 4, GL_FLOAT, GL_FALSE,  sizeof(glm::vec4)*4, ( GLvoid*)0); 
+    glEnableVertexAttribArray(offAttrib);
+    glVertexAttribDivisor(offAttrib, 1);
+
+    glVertexAttribPointer(offAttrib+1, 4, GL_FLOAT, GL_FALSE,  sizeof(glm::vec4)*4, ( GLvoid*)(4 * sizeof(GLfloat))); 
+    glEnableVertexAttribArray(offAttrib+1);
+    glVertexAttribDivisor(offAttrib+1, 1);
+
+    glVertexAttribPointer(offAttrib+2, 4, GL_FLOAT, GL_FALSE,  sizeof(glm::vec4)*4, ( GLvoid*)(8 * sizeof(GLfloat))); 
+    glEnableVertexAttribArray(offAttrib+2);
+    glVertexAttribDivisor(offAttrib+2, 1);
+
+    glVertexAttribPointer(offAttrib+3, 4, GL_FLOAT, GL_FALSE,  sizeof(glm::vec4)*4, ( GLvoid*)(12 * sizeof(GLfloat))); 
+    glEnableVertexAttribArray(offAttrib+3);
+    glVertexAttribDivisor(offAttrib+3, 1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0); // Unbind VAO
+
+    //set up Model-View-Projection matrix
+    //this way you only update when camera moves
+    glm::mat4 view;
+    view = camera.GetViewMatrix();
+    glm::mat4 projection; 
+    projection = glm::perspective(glm::radians(camera.Zoom), (float)WIDTH/(float)HEIGHT, 0.1f, 1000.0f);
+    MVPM = projection * view ;
+
+    GLuint uniformMatrix = glGetUniformLocation(ourShader.Program, "MVPM");
+    // Game loop
+    while (!glfwWindowShouldClose(window))
+    {
+        // Set frame time
+        GLfloat currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        timePassed = currentFrame;
+        if (timePassed - startTime > 0.25 && frames > 10) {
+          //frame rate
+          //std::cout<<frames/(timePassed-startTime)<<std::endl;
+          //time in milliseconds
+          std::cout<<deltaTime*1000.0<<endl;
+          startTime = timePassed;
+          frames = 0;
+        }
+        lastFrame = currentFrame;
+        frames++;
+        // Check and call events
+        glfwPollEvents();
+        Do_Movement();
+
+        // Render
+        // Clear the colorbuffer
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Draw the triangle
+        ourShader.Use();
+
+        // Pass the matrices to the shader
+        glUniformMatrix4fv(uniformMatrix, 1, GL_FALSE, glm::value_ptr(MVPM));
+        
+        glBindVertexArray(VAO);
+
+        glDrawElementsInstanced(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0, length); 
+        //glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        // Swap the screen buffers
+        glfwSwapBuffers(window);
+    }
+    // Properly de-allocate all resources once they've outlived their purpose
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    // Terminate GLFW, clearing any resources allocated by GLFW.
+    glfwTerminate();
+    return 0;
+}
+
+void Do_Movement()
+{
+    // Camera controls
+    if(keys[GLFW_KEY_W])
+        camera.ProcessKeyboard(FORWARD, deltaTime);
+    if(keys[GLFW_KEY_S])
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
+    if(keys[GLFW_KEY_A])
+        camera.ProcessKeyboard(LEFT, deltaTime);
+    if(keys[GLFW_KEY_D])
+        camera.ProcessKeyboard(RIGHT, deltaTime);
+
+    glm::mat4 view;
+    view = camera.GetViewMatrix();
+    glm::mat4 projection; 
+    projection = glm::perspective(glm::radians(camera.Zoom), (float)WIDTH/(float)HEIGHT, 0.1f, 1000.0f);
+    MVPM = projection * view;
+}
+
+// Is called whenever a key is pressed/released via GLFW
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
+{
+    //cout << key << endl;
+    if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, GL_TRUE);
+    if (key >= 0 && key < 1024)
+    {
+        if(action == GLFW_PRESS)
+            keys[key] = true;
+        else if(action == GLFW_RELEASE)
+            keys[key] = false;  
+    }
+}
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if(firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    GLfloat xoffset = xpos - lastX;
+    GLfloat yoffset = lastY - ypos;  // Reversed since y-coordinates go from bottom to left
+    
+    lastX = xpos;
+    lastY = ypos;
+
+    camera.ProcessMouseMovement(xoffset, yoffset);
+
+    glm::mat4 view;
+    view = camera.GetViewMatrix();
+    glm::mat4 projection; 
+    projection = glm::perspective(glm::radians(camera.Zoom), (float)WIDTH/(float)HEIGHT, 0.1f, 1000.0f);
+    MVPM = projection * view;
+} 
+
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    camera.ProcessMouseScroll(yoffset);
+
+    glm::mat4 view;
+    view = camera.GetViewMatrix();
+    glm::mat4 projection; 
+    projection = glm::perspective(glm::radians(camera.Zoom), (float)WIDTH/(float)HEIGHT, 0.1f, 1000.0f);
+    MVPM = projection * view;
+}

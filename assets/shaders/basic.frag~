@@ -1,0 +1,17 @@
+#version 330 core
+in vec3 ourColor;
+in vec3 TexCoords;
+
+uniform mat4 MVPM; 
+uniform float aspect;
+
+out vec4 color;
+
+void main()
+{
+	vec2 uv = TexCoords.xy;
+	uv.x *= aspect;
+	vec3 c = vec3(0.0);
+	c = vec3(1.0-smoothstep(0.5, 0.52, distance(uv, vec2(0.5, 0.5))));
+  color = vec4(c, 1.0);  
+}
