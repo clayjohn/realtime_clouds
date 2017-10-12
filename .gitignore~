@@ -3,3 +3,8 @@
 *.bmp
 *.tga
 include/
+gen_noise
+main
+
+*~
+
