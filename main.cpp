@@ -139,10 +139,10 @@ int main()
     glGenTextures(1, &fbotex);
     glBindTexture(GL_TEXTURE_2D, fbotex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glGenerateMipmap(GL_TEXTURE_2D);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -155,9 +155,12 @@ int main()
     glGenTextures(1, &pongfbotex);
     glBindTexture(GL_TEXTURE_2D, pongfbotex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		//set texture to repeat
@@ -186,9 +189,9 @@ int main()
     glGenFramebuffers(1, &skyfbo);
     glGenTextures(1, &skytex);
     glBindTexture(GL_TEXTURE_2D, skytex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -263,18 +266,20 @@ int main()
     GLuint atmouniformMatrix = glGetUniformLocation(atmoShader.Program, "MVPM");
     GLuint aspectUniform = glGetUniformLocation(ourShader.Program, "aspect");
 		ourShader.Use();   
-		glUniform1i(glGetUniformLocation(ourShader.Program, "perlworl"), 0); // set it manually
-		glUniform1i(glGetUniformLocation(ourShader.Program, "worl"), 1); // set it manually
-		glUniform1i(glGetUniformLocation(ourShader.Program, "curl"), 2); // set it manually
-		glUniform1i(glGetUniformLocation(ourShader.Program, "lastFrame"), 3); // set it manually
-		glUniform1i(glGetUniformLocation(ourShader.Program, "weather"), 4); // set it manually
-		glUniform1i(glGetUniformLocation(ourShader.Program, "atmosphere"), 5); // set it manually
+		GLuint perlworluniform = glGetUniformLocation(ourShader.Program, "perlworl"); // set it manually
+		GLuint worluniform = glGetUniformLocation(ourShader.Program, "worl"); // set it manually
+		GLuint curluniform = glGetUniformLocation(ourShader.Program, "curl"); // set it manually
+		GLuint lastFrameuniform = glGetUniformLocation(ourShader.Program, "lastFrame"); // set it manually
+		GLuint weatheruniform = glGetUniformLocation(ourShader.Program, "weather"); // set it manually
+		GLuint atmosphereuniform = glGetUniformLocation(ourShader.Program, "atmosphere"); 
 
     GLuint uppos = glGetUniformLocation(upscaleShader.Program, "pos");
     GLuint upsize = glGetUniformLocation(upscaleShader.Program, "size");
     GLuint upuniformMatrix = glGetUniformLocation(upscaleShader.Program, "MVPM");
+    GLuint upLFuniformMatrix = glGetUniformLocation(upscaleShader.Program, "LFMVPM");
     GLuint upcheck = glGetUniformLocation(upscaleShader.Program, "check");
-		glUniform1i(glGetUniformLocation(upscaleShader.Program, "buff"), 0); // set it manually
+		GLuint buffuniform = glGetUniformLocation(upscaleShader.Program, "buff"); // set it manually
+		GLuint ponguniform = glGetUniformLocation(upscaleShader.Program, "pong"); // set it manually
 
     GLuint texsize = glGetUniformLocation(postShader.Program, "size");
     GLuint texpos = glGetUniformLocation(postShader.Program, "pos");
@@ -314,7 +319,7 @@ GLenum err;
 
 
 				glBindFramebuffer(GL_FRAMEBUFFER, skyfbo);
-				glViewport(0, 0, 512, 512);
+				glViewport(0, 0, 128, 128);
 
         atmoShader.Use();
 
@@ -326,9 +331,12 @@ GLenum err;
 				
 				glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, skytex);
+				glGenerateMipmap(GL_TEXTURE_2D);
 				
-				glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-				glViewport(0, 0, 512, 512);
+				glBindFramebuffer(GL_FRAMEBUFFER, buffer1);
+				glViewport(0, 0, 128, 128);
 			
         //glClearColor(0.0f, 0.0f, 0.4f, 1.0f);
         //glClear(GL_COLOR_BUFFER_BIT);
@@ -337,7 +345,6 @@ GLenum err;
 				glUniform1i(checku, check%16);
 				glUniform1f(timeu, timePassed);
 				glUniform1i(camdirtyu, camera_dirty);
-				check++;
         // Pass the matrices to the shader
         glUniformMatrix4fv(uniformMatrix, 1, GL_FALSE, glm::value_ptr(MVPM));
         glUniformMatrix4fv(LFuniformMatrix, 1, GL_FALSE, glm::value_ptr(LFMVPM));
@@ -346,6 +353,13 @@ GLenum err;
 
         glBindVertexArray(VAO);
 
+		glUniform1i(perlworluniform, 0); // set it manually
+		glUniform1i(worluniform, 1); // set it manually
+		glUniform1i(curluniform, 2); // set it manually
+		glUniform1i(weatheruniform, 3); // set it manually
+		glUniform1i(atmosphereuniform, 4); // set it manually
+
+
 				glActiveTexture(GL_TEXTURE0);
 				glBindTexture(GL_TEXTURE_3D, perlworltex);
 				glActiveTexture(GL_TEXTURE1);
@@ -353,50 +367,53 @@ GLenum err;
 				glActiveTexture(GL_TEXTURE2);
 				glBindTexture(GL_TEXTURE_2D, curltex);
 				glActiveTexture(GL_TEXTURE3);
-				glBindTexture(GL_TEXTURE_2D, pongfbotex);//last frame
-				glActiveTexture(GL_TEXTURE4);
 				glBindTexture(GL_TEXTURE_2D, weathertex);//last frame
-				glActiveTexture(GL_TEXTURE5);
+				glActiveTexture(GL_TEXTURE4);
 				glBindTexture(GL_TEXTURE_2D, skytex);//last frame
 
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
 				
-				glActiveTexture(GL_TEXTURE0);
-    		glBindTexture(GL_TEXTURE_2D, fbotex);
-				glGenerateMipmap(GL_TEXTURE_2D);
-
-        // Pass the matrices to the shader
-
 				glBindFramebuffer(GL_FRAMEBUFFER, pongfbo);
 				glViewport(0, 0, 512, 512);
-				// Draw the triangle
-        //postShader.Use();
 				upscaleShader.Use();
-				//glUniform1f(texsize, 1.0);
-        // Pass the matrices to the shader
+        glUniformMatrix4fv(upLFuniformMatrix, 1, GL_FALSE, glm::value_ptr(LFMVPM));
         glUniformMatrix4fv(upuniformMatrix, 1, GL_FALSE, glm::value_ptr(MVPM));
-				glUniform1i(upcheck, (check+15)%16);
-        //glClearColor(0.2f, 0.4f, 0.8f, 1.0f);
+				glUniform1i(upcheck, (check)%16);
 
-        //glClear(GL_COLOR_BUFFER_BIT);
         glBindVertexArray(VAO);
-				
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, fbotex);
 
+				glUniform1i(buffuniform, 0); // set it manually
+				glUniform1i(ponguniform, 1); // set it manually
+
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, buffertex1);
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, fbotex);
+				
 				glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
 
+				glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        // Draw the triangle
+        postShader.Use();
+
+				glUniform1f(texsize, 1.0);
+        // Pass the matrices to the shader
+        glUniformMatrix4fv(uniformMatrixpost, 1, GL_FALSE, glm::value_ptr(MVPM));
+				
+
+        glBindVertexArray(VAO);
 				
 				glActiveTexture(GL_TEXTURE0);
-    		//glBindTexture(GL_TEXTURE_2D, fbotex);
-				//glGenerateMipmap(GL_TEXTURE_2D);
 				glBindTexture(GL_TEXTURE_2D, pongfbotex);
-				glGenerateMipmap(GL_TEXTURE_2D);
+
+				glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(0);
 				
+
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
 				glViewport(0, 0, WIDTH, HEIGHT);
 
 
@@ -424,6 +441,7 @@ GLenum err;
         // Swap the screen buffers
         glfwSwapBuffers(window);
 				camera_dirty++;
+				check++;
     }
     // Properly de-allocate all resources once they've outlived their purpose
     glDeleteVertexArrays(1, &VAO);

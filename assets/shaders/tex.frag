@@ -8,5 +8,5 @@ out vec4 color;
 
 void main()
 {
-  color = texture(fbo, TexCoords.xy, 0.0);  
+  color = texture(fbo, TexCoords.xy);  
 }

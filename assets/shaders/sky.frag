@@ -6,7 +6,6 @@ in vec4 fragPos;
 uniform sampler3D perlworl;
 uniform sampler3D worl;
 uniform sampler2D curl;
-uniform sampler2D lastFrame;
 uniform sampler2D weather;
 uniform sampler2D atmosphere;
 
@@ -231,77 +230,48 @@ vec4 march(vec3 pos, vec3 dir, int depth) {
 
 void main()
 {
-	
-	vec2 uv = TexCoords.xy;
+	vec2 shift = vec2(floor(float(check)/4.0), mod(float(check), 4.0));	
+	//shift = vec2(0.0);
+	vec2 uv = (gl_FragCoord.xy*4.0+shift.yx)/vec2(512.0);
 	uv = uv-vec2(0.5);
 	uv *= 2.0;
 	uv.x *= aspect;
-	vec4 uvdir = (vec4(fragPos.xy, 1.0, 1.0));
+	vec4 uvdir = (vec4(uv.xy, 1.0, 1.0));
 	mat4 invmat = inverse(MVPM);
 	vec4 worldPos = (inverse((MVPM))*uvdir);
-	worldPos.xyz /= worldPos.w;
+	//worldPos.xyz /= worldPos.w;
 	vec3 camPos = vec3(invmat[3]);
-	vec3 dir = normalize(worldPos.xyz);
+	vec3 dir = normalize(worldPos.xyz/worldPos.w);
 
 	vec4 col = vec4(0.0);
-	if (check_pos(gl_FragCoord.xy/4.0, 4.0)!=check&&true==true){
-		//reprojection from http://john-chapman-graphics.blogspot.ca/2013/01/what-is-motion-blur-motion-pictures-are.html
-		//look into running all this on cpu
-		vec4 current = uvdir;//vec4(0.5, 0.5, 1.0, 1.0);//uvdir;
-    current = inverse(MVPM) * current;
-    vec4 previous = LFMVPM * current;
-    previous.xyz /= previous.w;
-    previous.xy = previous.xy * 0.5 + 0.5;
-    vec2 blurVec = previous.xy - TexCoords.xy;
-		vec2 lookup = TexCoords.xy+blurVec;
-		float mip = 0.0;
-		if (lookup.x<0.0||lookup.x>1.0||lookup.y<0.0||lookup.y>1.0) {
-			lookup = clamp(lookup, 0.0, 1.0);
-			lookup = TexCoords.xy;
-			mip = 1.0;
-		}
-		col = texture(lastFrame, lookup, mip);
-	} else {
+
 		/*
 			 This is only useful for static clouds
 		if (camera_dirty>16) {
 			discard;
 		}
 		*/
-		vec3 background = texture(atmosphere, uv*0.5+0.5, 0.0).xyz;
+		vec3 background = texture(atmosphere, TexCoords.xy, 0.0).xyz;
 		if (dir.y>0.0) {
 			vec3 start = camPos+vec3(0.0, g_radius, 0.0)+dir*intersectSphere(camPos+vec3(0.0, g_radius, 0.0), dir, sky_b_radius);
 			vec3 end = camPos+vec3(0.0, g_radius, 0.0)+dir*intersectSphere(camPos+vec3(0.0, g_radius, 0.0), dir, sky_t_radius);
 			float t_dist = sky_t_radius-sky_b_radius;
 			float s_dist = t_dist/55.0;
 			float shelldist = (length(end-start));
-			vec4 volume;
-			if (shelldist<20000) {
+			vec4 volume = vec4(1.0);
+			//if (shelldist<20000) {
 				int steps = int(shelldist/s_dist);//55+int(40.0*(float(shelldist-t_dist)/float(shelldist)));
 				steps = 128;//clamp(steps, 55, 125);
-				s_dist = t_dist/128.0;
+				s_dist = t_dist/float(steps);
 				vec3 raystep = dir*s_dist;//(shelldist/float(steps));
 				volume = march(start, raystep, steps);
-				volume.a *= 1.0-smoothstep(0.5, 1.0, float(shelldist)/20000.0);
-			} else {
-				volume = vec4(0.0);
-			}
-			vec3 ldir = getSunDirection();
-			//now sun color should be read from atmo
-			//sun direction should be passed into both
-			//background += getSunColor()*smoothstep(0.999, 1.0, dot(ldir, normalize(dir)));
-			//volume.xyz = vec3(shelldist/(t_dist*4.0));
-			//volume.xyz = normalize(-start);
+				//volume.a *= 1.0-smoothstep(0.5, 1.0, float(shelldist)/20000.0);
+			//} else {
+				//volume = vec4(0.0);
+			//}
   		col = vec4(background*(1.0-volume.a)+volume.xyz*volume.a, 1.0);
-			//col = volume;
-			col.xyz = background;//
-			if (volume.a>1.0) {col = vec4(1.0, 0.0, 0.0, 1.0);}
-			
-			//col.xyz = dir;
 		} else {
 			col = vec4(vec3(0.4), 1.0);
-			//col.xyz = texture(curl, uv).yyy;
 		}
-	}
 	color = col;
 }
