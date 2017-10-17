@@ -7,4 +7,5 @@ gen_noise
 main
 
 *~
+*.swp
 *.png
