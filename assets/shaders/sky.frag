@@ -294,7 +294,7 @@ void main()
 			//volume.xyz = normalize(-start);
   		col = vec4(background*(1.0-volume.a)+volume.xyz*volume.a, 1.0);
 			//col = volume;
-			col.xyz = background;//
+			//col.xyz = background;//
 			if (volume.a>1.0) {col = vec4(1.0, 0.0, 0.0, 1.0);}
 			
 			//col.xyz = dir;
