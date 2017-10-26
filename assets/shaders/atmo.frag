@@ -256,6 +256,16 @@ vec3 get_incident_light(_in(ray_t) ray)
 		sumM * phaseM * betaM);
 }
 
+vec3 ACESFilm( vec3 x )
+{
+    float a = 2.51f;
+    float b = 0.03f;
+    float c = 2.43f;
+    float d = 0.59f;
+    float e = 0.14f;
+    return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
+}
+
 void main()
 {
 	vec2 aspect_ratio = vec2(u_res.x / u_res.y, 1);
@@ -302,6 +312,7 @@ void main()
       ray_t ray = get_primary_ray(point_cam, eye, look_at);
       col = get_incident_light(ray);
 		}
+		col = ACESFilm(col);
 		color = vec4(col, 1);
 	}
 }
