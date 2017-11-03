@@ -198,16 +198,16 @@ vec4 march(vec3 pos, vec3 dir, int depth) {
 		float weather_scale = 0.0001;
 		vec3 weather_sample = texture(weather, p.xz*weather_scale).xyz;
 		float t = density(p, weather_sample);
-		float ldt = 0.5;
+		const float ldt = 0.2;
 		float dt = exp(-ldt*t*ss);//, exp(-ldt*0.25*t*ss)*0.8);
 		T *= dt;		
 		vec3 lp = p;
 		float lT = 1.0;
 		if (t>0.0) {
 			//play around with these values
-			float smpd[6] =  float[6](2.0, 2.0, 2.0, 2.0, 8.0, 10.0);
+			float smpd[6] =  float[6](0.01, 0.01, 0.02, 0.1, 0.4, 5.0);
 			for (int j=0;j<6;j++) {
-				lp += ldir*smpd[j]+(RANDOM_VECTORS[j]*float(j)*lss);
+				lp += (ldir*smpd[j]+(RANDOM_VECTORS[j]*float(j)))*lss;
 				vec3 lweather = texture(weather, lp.xz*weather_scale).xyz;
 				float lt = density(lp, lweather);
 				const float ld = 1.0;
@@ -218,7 +218,7 @@ vec4 march(vec3 pos, vec3 dir, int depth) {
 		float powshug = 1.0-exp(-ldt*t*ss*2.0);
 		powshug = mix(1.0f, powshug, clamp((-dot(normalize(ldir), normalize(dir)) * 0.5f) + 0.5f, 0.0, 1.0));
 		vec3 ambient = getSkyColor()*mix(0.5, 1.0, height_fraction);
-		L += (ambient+getSunColor()*lT*phase*powshug*2.0)*(1.0-dt)*T*ss;		
+		L += (getSunColor()*lT*powshug*2.0*phase)*(1.0-dt)*T*ss;		
 	}
 	L/=L+1.0;
 	//L = sqrt(L);
