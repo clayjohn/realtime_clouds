@@ -40,7 +40,7 @@ const vec3 RANDOM_VECTORS[6] = vec3[6]
 
 vec3 getSunDirection() {
 	return vec3(0.0, 1.0, 0.0);
-	return normalize(vec3(0.0, cos(time*0.01+1.2), -sin(time*0.01+1.2)));
+	//return normalize(vec3(0.0, cos(time*0.01+1.2), -sin(time*0.01+1.2)));
 
 }
 
@@ -190,8 +190,8 @@ vec4 march(vec3 pos, vec3 dir, int depth) {
 	vec3 L = vec3(0.0);//getSkyColor();
 	int count=0;
 	p+=dir*hash(p);
-	float phase = numericalMieFit(dot(normalize(-ldir), normalize(dir)));
-	//phase = max(HG(normalize(ldir), normalize(dir), (0.8)),HG(normalize(ldir), normalize(dir), (-0.3)));
+	//float phase = numericalMieFit(dot(normalize(-ldir), normalize(dir)));
+	float phase = max(HG(normalize(ldir), normalize(dir), (0.8)),HG(normalize(ldir), normalize(dir), (-0.3)));
 	for (int i=0;i<depth;i++) {
 		p += dir;
 		float height_fraction = GetHeightFractionForPoint(p, vec2(float(sky_b_radius), float(sky_t_radius)));
@@ -217,8 +217,8 @@ vec4 march(vec3 pos, vec3 dir, int depth) {
 		}
 		float powshug = 1.0-exp(-ldt*t*ss*2.0);
 		powshug = mix(1.0f, powshug, clamp((-dot(normalize(ldir), normalize(dir)) * 0.5f) + 0.5f, 0.0, 1.0));
-		vec3 ambient = getSkyColor()*mix(0.5, 1.0, height_fraction);
-		L += (getSunColor()*lT*powshug*2.0*phase)*(1.0-dt)*T*ss;		
+		vec3 ambient = 0.5*getSkyColor()*mix(0.5, 1.0, height_fraction);
+		L += (ambient+getSunColor()*lT*powshug*2.0*phase)*(1.0-dt)*T*ss;		
 	}
 	L/=L+1.0;
 	//L = sqrt(L);
