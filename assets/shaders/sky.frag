@@ -38,22 +38,47 @@ const vec3 RANDOM_VECTORS[6] = vec3[6]
 	vec3(-0.16852403f,  0.14748697f,  0.97460106f)
 	);
 
-vec3 getSunDirection() {
-	return vec3(0.0, 1.0, 0.0);
-	//return normalize(vec3(0.0, cos(time*0.01+1.2), -sin(time*0.01+1.2)));
 
+vec3 U2Tone(vec3 x) {
+	const float A = 0.15;
+	const float B = 0.50;
+	const float C = 0.10;
+	const float D = 0.20;
+	const float E = 0.02;
+	const float F = 0.30;
+
+   return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
+}
+
+
+mat3 rotate_around_x(float angle_degrees)
+{
+	float angle = radians(angle_degrees);
+	float _sin = sin(angle);
+	float _cos = cos(angle);
+	return mat3(1, 0, 0, 0, _cos, -_sin, 0, _sin, _cos);
+}
+
+vec3 getSunDirection() {
+	vec3 sun_dir = vec3(0.0, 1.0, 0.0);
+
+	mat3 rot = rotate_around_x(-abs(sin(time / 20.)) * 90.);
+	sun_dir *= rot;
+	return sun_dir;
 }
 
 vec3 getSunColor() {
 	//should shift with sun color
-	//vec3 dir = getSunDirection();
-	return suncol;
-	//return vec3(dir.y, 0.0, 0.0);
+	vec3 dir = getSunDirection();
+	return mix(vec3(0.9, 0.8, 0.6), suncol, dir.y);
+	//return suncol;
 }
 
 vec3 getSkyColor() {
 	//soon make this a gradient based on sun direction
-	return skycol;
+
+	//return mix(vec3(0.9, 0.8, 0.5), skycol, getSunDirection().y);
+	return vec3(0.99, 0.7, 0.5);
 }
 
 int check_pos(vec2 x, float size) {
@@ -163,7 +188,7 @@ float HG(vec3 inv, vec3 outv, float g) {
 float density(vec3 p,vec3 weather) {
 	p.x += time*10.0;
 	float height_fraction = GetHeightFractionForPoint(p, vec2(float(sky_b_radius), float(sky_t_radius)));
-	vec4 n = texture(perlworl, p*0.0002);
+	vec4 n = texture(perlworl, p*0.0006);
 	float fbm = n.g*0.625+n.b*0.25+n.a*0.125;
 	weather.x = smoothstep(0.65, 1.0, weather.x);
 	float g = densityHeightGradient(height_fraction, weather.z);
@@ -173,7 +198,7 @@ float density(vec3 p,vec3 weather) {
 	base_cloud *= cloud_coverage;
 	vec2 whisp = texture(curl, p.xy*0.001).xy;
 	p.xy += whisp*300.0*(1.0-height_fraction);
-	vec3 hn = texture(worl, p*0.002).xyz;
+	vec3 hn = texture(worl, p*0.004).xyz;
 	float hfbm = hn.r*0.625+hn.g*0.25+hn.b*0.125;
 	hfbm = mix(hfbm, 1.0-hfbm, clamp(height_fraction*10.0, 0.0, 1.0));
 	base_cloud = remap(base_cloud, hfbm*0.2, 1.0, 0.0, 1.0);
@@ -217,12 +242,13 @@ vec4 march(vec3 pos, vec3 dir, int depth) {
 		}
 		float powshug = 1.0-exp(-ldt*t*ss*2.0);
 		powshug = mix(1.0f, powshug, clamp((-dot(normalize(ldir), normalize(dir)) * 0.5f) + 0.5f, 0.0, 1.0));
-		vec3 ambient = 0.5*getSkyColor()*mix(0.5, 1.0, height_fraction);
-		L += (ambient+getSunColor()*lT*powshug*2.0*phase)*(1.0-dt)*T*ss;		
+		vec3 ambient = 0.5*getSkyColor()*mix(0.25, 1.0, height_fraction);
+		vec3 sunC = getSunColor();
+		L += (ambient+sunC*lT*powshug*2.0*phase)*(1.0-dt)*T*ss;		
 	}
-	L/=L+1.0;
-	//L = sqrt(L);
-	
+	L = U2Tone(L);
+	L /= U2Tone(vec3(50.0));
+	L = sqrt(L);
 	T = clamp(1.0-T, 0.0, 1.0);
 	//L = texture(perlworl, pos*0.0002).xxx;
 	return vec4(L, T);
