@@ -22,7 +22,7 @@ out vec4 color;
 
 const float g_radius = 600000.0; //ground radius
 const float sky_b_radius = 601000.0;//bottom of cloud layer
-const float sky_t_radius = 603500.0;//top of cloud layer
+const float sky_t_radius = 603700.0;//top of cloud layer
 const float c_radius = 6008400.0; //2d noise layer
 
 uniform vec3 skycol = vec3(0.6, 0.8, 0.95);
@@ -97,28 +97,6 @@ float GetHeightFractionForPoint(vec3 inPosition, vec2 inCloudMinMax)
 	return clamp(height_fraction, 0.0, 1.0);
 }
 
-float cubicPulse( float c, float w, float x )
-{
-    x = abs(x - c);
-    if( x>w ) return 0.0;
-    x /= w;
-    return 1.0 - x*x*(3.0-2.0*x);
-}
-
-float getHeightGradient(float height, vec3 weather) {
-		float t = weather.z;
-    float val = 0.0;
-    float v1 = mix(0.08, 0.35, smoothstep(0.0, 0.5, t));
-    v1 = mix(v1, 0.6, smoothstep(0.5, 1.0, t));
-    float v2 = mix(0.08, 0.3, smoothstep(0.0, 0.5, t));
-    v2 = mix(v2, 0.5, smoothstep(0.5, 1.0, t));
-    float v3 = mix(1.0, 0.8, smoothstep(0.0, 0.5, t));
-    v3 = mix(v3, 0.4, smoothstep(0.5, 1.0, t));
-    val = cubicPulse(height, v1, v2);
-    val = smoothstep(0.0, v3, val);
-		return val;
-}
-
 vec4 mixGradients( float cloudType){
 
 	const vec4 STRATUS_GRADIENT = vec4(0.02f, 0.05f, 0.09f, 0.11f);
@@ -139,8 +117,9 @@ float intersectSphere(vec3 pos, vec3 dir, float r) {
     float a = dot(dir, dir);
     float b = 2.0 * dot(dir, pos);
     float c = dot(pos, pos) - (r * r);
-		float p =-b - sqrt((b*b) - 4.0*a*c);
-		float p2 =-b + sqrt((b*b) - 4.0*a*c);
+		float d = sqrt((b*b) - 4.0*a*c);
+		float p = -b - d;
+		float p2 = -b + d;
     return max(p, p2)/(2.0*a);
 }
 
@@ -190,10 +169,10 @@ float density(vec3 p,vec3 weather, bool hq) {
 	float height_fraction = GetHeightFractionForPoint(p, vec2(float(sky_b_radius), float(sky_t_radius)));
 	vec4 n = texture(perlworl, p*0.0006);
 	float fbm = n.g*0.625+n.b*0.25+n.a*0.125;
-	weather.x = smoothstep(0.65, 1.0, weather.x);
+	weather.x = smoothstep(0.7, 1.0, weather.x);
 	float g = densityHeightGradient(height_fraction, weather.z);
 	float base_cloud = remap(n.r, -(1.0-fbm), 1.0, 0.0, 1.0);
-	float cloud_coverage = weather.x;//pow(weather.x, remap(height_fraction, 0.7, 0.8, 1.0, mix(1.0, 0.5, 0.7)));
+	float cloud_coverage = weather.x;
 	base_cloud = remap(base_cloud*g, 1.0-cloud_coverage, 1.0, 0.0, 1.0); 
 	base_cloud *= cloud_coverage;
 	if (hq) {
@@ -207,21 +186,24 @@ float density(vec3 p,vec3 weather, bool hq) {
 	return clamp(base_cloud, 0.0, 1.0);
 }
 
-vec4 march(vec3 pos, vec3 dir, int depth) {
+vec4 march(vec3 pos, vec3 end, vec3 dir, int depth) {
 	float T = 1.0;
 	float alpha = 0.0;
 	vec3 p = pos;
 	float ss = length(dir);
-	vec3 ldir = getSunDirection()*ss;
-	float lss = length(ldir);
+	const float t_dist = sky_t_radius-sky_b_radius;
+	float lss = t_dist/float(depth);
+	vec3 ldir = getSunDirection()*lss;
 	vec3 L = vec3(0.0);//getSkyColor();
 	int count=0;
 	p+=dir*hash(p);
 	float t = 1.0;
-	//float phase = numericalMieFit(dot(normalize(-ldir), normalize(dir)));
 	float phase = max(HG(normalize(ldir), normalize(dir), (0.8)),HG(normalize(ldir), normalize(dir), (-0.3)));
 	for (int i=0;i<depth;i++) {
 		p += dir;
+		if (distance(pos, p)>distance(pos, end)) {
+			break;
+		}
 		float height_fraction = GetHeightFractionForPoint(p, vec2(float(sky_b_radius), float(sky_t_radius)));
 		float weather_scale = 0.0001;
 		vec3 weather_sample = texture(weather, p.xz*weather_scale).xyz;
@@ -235,7 +217,7 @@ vec4 march(vec3 pos, vec3 dir, int depth) {
 		T *= dt;		
 		vec3 lp = p;
 		float lT = 1.0;
-		if (t>0.0) {
+		if (t>0.1) {
 			//play around with these values
 			float smpd[6] =  float[6](0.01, 0.01, 0.02, 0.1, 0.4, 5.0);
 			for (int j=0;j<6;j++) {
@@ -254,7 +236,7 @@ vec4 march(vec3 pos, vec3 dir, int depth) {
 		L += (ambient+sunC*lT*powshug*2.0*phase)*(1.0-dt)*T*ss;		
 	}
 	L = U2Tone(L);
-	L /= U2Tone(vec3(50.0));
+	//L /= U2Tone(vec3(50.0));
 	L = sqrt(L);
 	T = clamp(1.0-T, 0.0, 1.0);
 	//L = texture(perlworl, pos*0.0002).xxx;
@@ -305,31 +287,16 @@ void main()
 		if (dir.y>0.0) {
 			vec3 start = camPos+vec3(0.0, g_radius, 0.0)+dir*intersectSphere(camPos+vec3(0.0, g_radius, 0.0), dir, sky_b_radius);
 			vec3 end = camPos+vec3(0.0, g_radius, 0.0)+dir*intersectSphere(camPos+vec3(0.0, g_radius, 0.0), dir, sky_t_radius);
-			float t_dist = sky_t_radius-sky_b_radius;
-			float s_dist = t_dist/55.0;
+			const float t_dist = sky_t_radius-sky_b_radius;
 			float shelldist = (length(end-start));
 			vec4 volume;
-			if (shelldist<20000) {
-				int steps = int(mix(64.0, 96.0, dot(dir, vec3(0.0, 1.0, 0.0))));
-				s_dist = t_dist/float(steps);
-				vec3 raystep = dir*s_dist;//(shelldist/float(steps));
-				volume = march(start, raystep, steps);
-				volume.a *= 1.0-smoothstep(0.5, 1.0, float(shelldist)/20000.0);
-			} else {
-				volume = vec4(0.0);
-			}
-			vec3 ldir = getSunDirection();
-			//now sun color should be read from atmo
-			//sun direction should be passed into both
-			//background += getSunColor()*smoothstep(0.999, 1.0, dot(ldir, normalize(dir)));
-			//volume.xyz = vec3(shelldist/(t_dist*4.0));
-			//volume.xyz = normalize(-start);
+			int steps = int(mix(96.0, 54.0, dot(dir, vec3(0.0, 1.0, 0.0))));
+			float dmod = smoothstep(0.0, 1.0, (shelldist/t_dist)/12.0);
+			float s_dist = mix(t_dist, t_dist*4.0, dmod)/float(steps);
+			vec3 raystep = dir*s_dist;//(shelldist/float(steps));
+			volume = march(start, end, raystep, steps);
   		col = vec4(background*(1.0-volume.a)+volume.xyz*volume.a, 1.0);
-			//col = volume;
-			//col.xyz = background;//
 			if (volume.a>1.0) {col = vec4(1.0, 0.0, 0.0, 1.0);}
-			
-			//col.xyz = dir;
 		} else {
 			col = vec4(vec3(0.4), 1.0);
 			//col.xyz = texture(curl, uv).yyy;
