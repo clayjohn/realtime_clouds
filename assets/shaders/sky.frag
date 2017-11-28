@@ -185,7 +185,7 @@ float HG(vec3 inv, vec3 outv, float g) {
 	return k*(1.0-g*g)/(pow(1.0+g*g-2.0*g*costheta, 1.5));
 }
 
-float density(vec3 p,vec3 weather) {
+float density(vec3 p,vec3 weather, bool hq) {
 	p.x += time*10.0;
 	float height_fraction = GetHeightFractionForPoint(p, vec2(float(sky_b_radius), float(sky_t_radius)));
 	vec4 n = texture(perlworl, p*0.0006);
@@ -196,12 +196,14 @@ float density(vec3 p,vec3 weather) {
 	float cloud_coverage = weather.x;//pow(weather.x, remap(height_fraction, 0.7, 0.8, 1.0, mix(1.0, 0.5, 0.7)));
 	base_cloud = remap(base_cloud*g, 1.0-cloud_coverage, 1.0, 0.0, 1.0); 
 	base_cloud *= cloud_coverage;
-	vec2 whisp = texture(curl, p.xy*0.001).xy;
-	p.xy += whisp*300.0*(1.0-height_fraction);
-	vec3 hn = texture(worl, p*0.004).xyz;
-	float hfbm = hn.r*0.625+hn.g*0.25+hn.b*0.125;
-	hfbm = mix(hfbm, 1.0-hfbm, clamp(height_fraction*10.0, 0.0, 1.0));
-	base_cloud = remap(base_cloud, hfbm*0.2, 1.0, 0.0, 1.0);
+	if (hq) {
+		vec2 whisp = texture(curl, p.xy*0.001).xy;
+		p.xy += whisp*300.0*(1.0-height_fraction);
+		vec3 hn = texture(worl, p*0.004).xyz;
+		float hfbm = hn.r*0.625+hn.g*0.25+hn.b*0.125;
+		hfbm = mix(hfbm, 1.0-hfbm, clamp(height_fraction*10.0, 0.0, 1.0));
+		base_cloud = remap(base_cloud, hfbm*0.2, 1.0, 0.0, 1.0);
+	}
 	return clamp(base_cloud, 0.0, 1.0);
 }
 
@@ -215,6 +217,7 @@ vec4 march(vec3 pos, vec3 dir, int depth) {
 	vec3 L = vec3(0.0);//getSkyColor();
 	int count=0;
 	p+=dir*hash(p);
+	float t = 1.0;
 	//float phase = numericalMieFit(dot(normalize(-ldir), normalize(dir)));
 	float phase = max(HG(normalize(ldir), normalize(dir), (0.8)),HG(normalize(ldir), normalize(dir), (-0.3)));
 	for (int i=0;i<depth;i++) {
@@ -222,7 +225,11 @@ vec4 march(vec3 pos, vec3 dir, int depth) {
 		float height_fraction = GetHeightFractionForPoint(p, vec2(float(sky_b_radius), float(sky_t_radius)));
 		float weather_scale = 0.0001;
 		vec3 weather_sample = texture(weather, p.xz*weather_scale).xyz;
-		float t = density(p, weather_sample);
+		if (t>0.1) {
+			t = density(p, weather_sample, true);
+		} else {
+			t = density(p, weather_sample, false);
+		}
 		const float ldt = 0.2;
 		float dt = exp(-ldt*t*ss);//, exp(-ldt*0.25*t*ss)*0.8);
 		T *= dt;		
@@ -234,7 +241,7 @@ vec4 march(vec3 pos, vec3 dir, int depth) {
 			for (int j=0;j<6;j++) {
 				lp += (ldir*smpd[j]+(RANDOM_VECTORS[j]*float(j)))*lss;
 				vec3 lweather = texture(weather, lp.xz*weather_scale).xyz;
-				float lt = density(lp, lweather);
+				float lt = density(lp, lweather, false);
 				const float ld = 1.0;
 				float beers = max(exp(-ld*lt*lss*smpd[j]), exp(-ld*0.25*lt*lss*smpd[j])*0.7);
 				lT *= beers;
@@ -303,9 +310,8 @@ void main()
 			float shelldist = (length(end-start));
 			vec4 volume;
 			if (shelldist<20000) {
-				int steps = int(shelldist/s_dist);//55+int(40.0*(float(shelldist-t_dist)/float(shelldist)));
-				steps = 128;//clamp(steps, 55, 125);
-				s_dist = t_dist/128.0;
+				int steps = int(mix(64.0, 96.0, dot(dir, vec3(0.0, 1.0, 0.0))));
+				s_dist = t_dist/float(steps);
 				vec3 raystep = dir*s_dist;//(shelldist/float(steps));
 				volume = march(start, raystep, steps);
 				volume.a *= 1.0-smoothstep(0.5, 1.0, float(shelldist)/20000.0);

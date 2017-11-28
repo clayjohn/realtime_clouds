@@ -5,7 +5,7 @@ OBJS = main.cpp #include/FastNoise/FastNoise.cpp include/TileableVolumeNoise/Til
 CC = g++
 
 #INCLUDE_PATHS specifies the additional include paths we'll need
-INCLUDE_PATHS = -I -Iinclude #-Iinclude/TileableVolumeNoise/glm#-IC:\glew\include -IC:\SOIL\include
+INCLUDE_PATHS = -I -Iinclude -I/usr/local/include#-Iinclude/TileableVolumeNoise/glm#-IC:\glew\include -IC:\SOIL\include
 
 #LIBRARY_PATHS specifies the additional library paths we'll need
 LIBRARY_PATHS = -L/usr/local/lib#-LC:\GLFW\lib #-LC:\glew\lib -LC:\SOIL\lib
