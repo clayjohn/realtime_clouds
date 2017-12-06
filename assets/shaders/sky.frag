@@ -12,7 +12,6 @@ in vec4 fragPos;
 uniform sampler3D perlworl;
 uniform sampler3D worl;
 uniform sampler2D curl;
-uniform sampler2D lastFrame;
 uniform sampler2D weather;
 uniform sampler2D atmosphere;
 
@@ -165,7 +164,7 @@ float HG(vec3 inv, vec3 outv, float g) {
 float density(vec3 p,vec3 weather, bool hq, float LOD) {
 	p.x += time*10.0;
 	float height_fraction = GetHeightFractionForPoint(p, vec2(float(sky_b_radius), float(sky_t_radius)));
-	vec4 n = textureLod(perlworl, p*0.0002, LOD);
+	vec4 n = textureLod(perlworl, p*0.0003, LOD);
 	float fbm = n.g*0.625+n.b*0.25+n.a*0.125;
 	weather.x = smoothstep(0.6, 1.2, weather.x);
 	float g = densityHeightGradient(height_fraction, weather.z);
@@ -201,7 +200,7 @@ vec4 march(vec3 pos, vec3 end, vec3 dir, int depth) {
 		float height_fraction = GetHeightFractionForPoint(p, vec2(float(sky_b_radius), float(sky_t_radius)));
 		float weather_scale = 0.0001;
 		vec3 weather_sample = texture(weather, p.xz*weather_scale).xyz;
-		t = density(p, weather_sample, true, 0.0);
+		t = density(p, weather_sample, true, 1.0);
 		const float ldt = 0.5;
 		float dt = exp(-ldt*t*ss);//, exp(-ldt*0.25*t*ss)*0.8);
 		T *= dt;		
@@ -244,56 +243,39 @@ vec4 march(vec3 pos, vec3 end, vec3 dir, int depth) {
 
 void main()
 {
-	
-	vec2 uv = TexCoords.xy;
+	vec2 shift = vec2(floor(float(check)/4.0), mod(float(check), 4.0));	
+	//shift = vec2(0.0);
+	vec2 uv = (gl_FragCoord.xy*4.0+shift.yx)/vec2(512.0);
 	uv = uv-vec2(0.5);
 	uv *= 2.0;
 	uv.x *= aspect;
-	vec4 uvdir = (vec4(fragPos.xy, 1.0, 1.0));
+	vec4 uvdir = (vec4(uv.xy, 1.0, 1.0));
 	mat4 invmat = inverse(MVPM);
 	vec4 worldPos = (inverse((MVPM))*uvdir);
-	worldPos.xyz /= worldPos.w;
+	//worldPos.xyz /= worldPos.w;
 	vec3 camPos = vec3(invmat[3]);
-	vec3 dir = normalize(worldPos.xyz);
+	vec3 dir = normalize(worldPos.xyz/worldPos.w);
 
 	vec4 col = vec4(0.0);
-	if (check_pos(gl_FragCoord.xy/4.0, 4.0)!=check&&true==true){
-		//reprojection from http://john-chapman-graphics.blogspot.ca/2013/01/what-is-motion-blur-motion-pictures-are.html
-		//look into running all this on cpu
-		vec4 current = uvdir;//vec4(0.5, 0.5, 1.0, 1.0);//uvdir;
-    current = inverse(MVPM) * current;
-    vec4 previous = LFMVPM * current;
-    previous.xyz /= previous.w;
-    previous.xy = previous.xy * 0.5 + 0.5;
-    vec2 blurVec = previous.xy - TexCoords.xy;
-		vec2 lookup = TexCoords.xy+blurVec;
-		float mip = 0.0;
-		if (lookup.x<0.0||lookup.x>1.0||lookup.y<0.0||lookup.y>1.0) {
-			lookup = clamp(lookup, 0.0, 1.0);
-			lookup = TexCoords.xy;
-			mip = 1.0;
-		}
-		col = texture(lastFrame, lookup, mip);
+	vec3 background = textureLod(atmosphere, TexCoords.xy, 0.0).xyz;
+	//vec3 background = vec3(dot(normalize(dir), normalize(getSunDirection())));
+	if (dir.y>0.0) {
+		vec3 start = camPos+vec3(0.0, g_radius, 0.0)+dir*intersectSphere(camPos+vec3(0.0, g_radius, 0.0), dir, sky_b_radius);
+		vec3 end = camPos+vec3(0.0, g_radius, 0.0)+dir*intersectSphere(camPos+vec3(0.0, g_radius, 0.0), dir, sky_t_radius);
+		const float t_dist = sky_t_radius-sky_b_radius;
+		float shelldist = (length(end-start));
+		vec4 volume;
+		int steps = int(mix(96.0, 54.0, dot(dir, vec3(0.0, 1.0, 0.0))));
+		float dmod = smoothstep(0.0, 1.0, (shelldist/t_dist)/14.0);
+		float s_dist = mix(t_dist, t_dist*4.0, dmod)/float(steps);
+		vec3 raystep = dir*s_dist;//(shelldist/float(steps));
+		volume = march(start, end, raystep, steps);
+		col = vec4(background*(1.0-volume.a)+volume.xyz*volume.a, 1.0);
+		if (volume.a>1.0) {col = vec4(1.0, 0.0, 0.0, 1.0);}
 	} else {
-		vec3 background = texture(atmosphere, uv*0.5+0.5, 0.0).xyz;
-		//vec3 background = vec3(dot(normalize(dir), normalize(getSunDirection())));
-		if (dir.y>0.0) {
-			vec3 start = camPos+vec3(0.0, g_radius, 0.0)+dir*intersectSphere(camPos+vec3(0.0, g_radius, 0.0), dir, sky_b_radius);
-			vec3 end = camPos+vec3(0.0, g_radius, 0.0)+dir*intersectSphere(camPos+vec3(0.0, g_radius, 0.0), dir, sky_t_radius);
-			const float t_dist = sky_t_radius-sky_b_radius;
-			float shelldist = (length(end-start));
-			vec4 volume;
-			int steps = int(mix(96.0, 54.0, dot(dir, vec3(0.0, 1.0, 0.0))));
-			float dmod = smoothstep(0.0, 1.0, (shelldist/t_dist)/14.0);
-			float s_dist = mix(t_dist, t_dist*4.0, dmod)/float(steps);
-			vec3 raystep = dir*s_dist;//(shelldist/float(steps));
-			volume = march(start, end, raystep, steps);
-  		col = vec4(background*(1.0-volume.a)+volume.xyz*volume.a, 1.0);
-			if (volume.a>1.0) {col = vec4(1.0, 0.0, 0.0, 1.0);}
-		} else {
-			col = vec4(vec3(0.4), 1.0);
-			//col.xyz = texture(curl, uv).yyy;
-		}
+		col = vec4(vec3(0.4), 1.0);
+		//col.xyz = texture(curl, uv).yyy;
 	}
+	
 	color = col;
 }

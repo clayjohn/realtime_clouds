@@ -278,30 +278,15 @@ void main()
 	point_cam = normalize(worldPos.xyz);
 
 
-	if (check_pos(gl_FragCoord.xy/4.0, 4.0)!=check){
+	if (check_pos(gl_FragCoord.xy/1.0, 4.0)!=check&&true==false){
 		//reprojection from http://john-chapman-graphics.blogspot.ca/2013/01/what-is-motion-blur-motion-pictures-are.html
 		//look into running all this on cpu
 		discard;
-		/*
-		vec4 current = vec4((2.0 * point_ndc - 1.0) * aspect_ratio * fov, 1.0, 1.0);
-    current = inverse(MVPM) * current;
-    vec4 previous = LFMVPM * current;
-    previous.xyz /= previous.w;
-    previous.xy = previous.xy * 0.5 + 0.5;
-    vec2 blurVec = previous.xy - TexCoords.xy;
-		vec2 lookup = TexCoords.xy+blurVec;
-		float mip = 0.0;
-		if (lookup.x<0.0||lookup.x>1.0||lookup.y<0.0||lookup.y>1.0) {
-			lookup = clamp(lookup, 0.0, 1.0);
-			lookup = TexCoords.xy;
-			mip = 1.0;
-		}
-		color = texture(lastFrame, lookup, mip);
-		*/
+
 	} else {
 
 		vec3 col = vec3(0);
-		if (point_cam.y>0.0) {
+		if (point_cam.y>-0.05) {
 	// sun
 			mat3 rot = rotate_around_x(-abs(sin(u_time / 20.)) * 90.);
 			sun_dir *= rot;
