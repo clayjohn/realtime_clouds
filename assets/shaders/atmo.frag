@@ -307,9 +307,10 @@ void main()
 			sun_dir *= rot;
 
       vec3 eye = vec3 (0, earth_radius + 1., 0);
-      vec3 look_at = vec3 (0, earth_radius + 1., -1);
-
-      ray_t ray = get_primary_ray(point_cam, eye, look_at);
+      vec3 look_at = vec3 (0, earth_radius + 1.0, -1);
+			
+      //ray_t ray = get_primary_ray(point_cam, eye, look_at);
+			ray_t ray = ray_t(vec3(0.0, earth_radius+1.0, 0.0), point_cam);
       col = get_incident_light(ray);
 		}
 		col = ACESFilm(col);
