@@ -1,12 +1,9 @@
 #version 330 core
-in vec3 ourColor;
-in vec3 TexCoords;
 
-//uniform vec2 resolution;
-const vec2 resolution = vec2(512.0);
+uniform vec2 resolution;
 uniform float time;
 uniform mat4 MVPM;
-uniform int check;
+
 out vec4 color;
 
 // ----------------------------------------------------------------------------
@@ -277,17 +274,9 @@ void main()
 	worldPos.xyz /= worldPos.w;
 	point_cam = normalize(worldPos.xyz);
 
-
-	if (check_pos(gl_FragCoord.xy/1.0, 4.0)!=check&&true==false){
-		//reprojection from http://john-chapman-graphics.blogspot.ca/2013/01/what-is-motion-blur-motion-pictures-are.html
-		//look into running all this on cpu
-		discard;
-
-	} else {
-
 		vec3 col = vec3(0);
 		if (point_cam.y>-0.05) {
-	// sun
+			// sun
 			mat3 rot = rotate_around_x(-abs(sin(u_time / 20.)) * 90.);
 			sun_dir *= rot;
 
@@ -300,5 +289,4 @@ void main()
 		}
 		col = ACESFilm(col);
 		color = vec4(col, 1);
-	}
 }

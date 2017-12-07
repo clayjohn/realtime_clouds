@@ -42,11 +42,10 @@ GLfloat timePassed = 0.0f;
 GLfloat startTime = 0.0f;
 glm::mat4 MVPM;
 glm::mat4 LFMVPM;
-int camera_dirty = 0;
 
 
 // Window dimensions
-const GLuint WIDTH = 600, HEIGHT = 600;
+const GLuint WIDTH = 512, HEIGHT = 512;
 GLfloat ASPECT = float(WIDTH)/float(HEIGHT);
 
 // The MAIN function, from here we start the application and run the game loop
@@ -99,13 +98,13 @@ int main()
 
     // Set up vertex data (and buffer(s)) and attribute pointers
     GLfloat vertices[] = {
-        // Positions         // Colors            //texcoords
-        1.0f, -1.0f,  0.0f,   1.0f, 1.0f, 0.0f,    1.0f,  0.0f, 0.0f,
-       -1.0f, -1.0f,  0.0f,   0.0f, 1.0f, 1.0f,    0.0f,  0.0f, 0.0f,
-       -1.0f,  1.0f,  0.0f,   1.0f, 0.0f, 1.0f,    0.0f,  1.0f, 0.0f,
-        1.0f, -1.0f,  0.0f,   1.0f, 1.0f, 0.0f,    1.0f,  0.0f, 0.0f,
-       -1.0f,  1.0f,  0.0f,   1.0f, 0.0f, 1.0f,    0.0f,  1.0f, 0.0f,
-        1.0f,  1.0f,  0.0f,   1.0f, 0.0f, 1.0f,    1.0f,  1.0f, 0.0f 
+        // Positions      
+        1.0f, -1.0f,
+       -1.0f, -1.0f,
+       -1.0f,  1.0f,
+        1.0f, -1.0f,
+       -1.0f,  1.0f,
+        1.0f,  1.0f 
     };
 	
 
@@ -120,25 +119,15 @@ int main()
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     // Position attribute
-    GLint posAttrib = glGetAttribLocation(ourShader.Program, "position");
-    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), (GLvoid*)0);
-    glEnableVertexAttribArray(posAttrib);
-    // Color attribute
-    GLint colAttrib = glGetAttribLocation(ourShader.Program, "color");
-    glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(colAttrib);
-
-    GLint texAttrib = glGetAttribLocation(ourShader.Program, "texCoords");
-    glVertexAttribPointer(texAttrib, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), (GLvoid*)(6 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(texAttrib);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
 
 		GLuint fbo, fbotex;
 
-		
     glGenFramebuffers(1, &fbo);
     glGenTextures(1, &fbotex);
     glBindTexture(GL_TEXTURE_2D, fbotex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -146,13 +135,13 @@ int main()
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbotex, 0);
 
-		GLuint pongfbo, pongfbotex;
 
+		GLuint pongfbo, pongfbotex;
 		
     glGenFramebuffers(1, &pongfbo);
     glGenTextures(1, &pongfbotex);
     glBindTexture(GL_TEXTURE_2D, pongfbotex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -168,7 +157,7 @@ int main()
     glGenFramebuffers(1, &buffer1);
     glGenTextures(1, &buffertex1);
     glBindTexture(GL_TEXTURE_2D, buffertex1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH/4, HEIGHT/4, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -183,7 +172,7 @@ int main()
     glGenFramebuffers(1, &skyfbo);
     glGenTextures(1, &skytex);
     glBindTexture(GL_TEXTURE_2D, skytex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH/4, HEIGHT/4, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -255,35 +244,31 @@ int main()
     MVPM = projection * view ;
 
         //setup shader info
-    GLuint camdirtyu = glGetUniformLocation(ourShader.Program, "camera_dirty");
+    ourShader.Use();   
     GLuint uniformMatrix = glGetUniformLocation(ourShader.Program, "MVPM");
-    GLuint viewMatrix = glGetUniformLocation(ourShader.Program, "VM");
-    GLuint LFuniformMatrix = glGetUniformLocation(ourShader.Program, "LFMVPM");
-    GLuint uniformMatrixpost = glGetUniformLocation(postShader.Program, "MVPM");
-    GLuint atmouniformMatrix = glGetUniformLocation(atmoShader.Program, "MVPM");
     GLuint aspectUniform = glGetUniformLocation(ourShader.Program, "aspect");
-        ourShader.Use();   
-        GLuint perlworluniform = glGetUniformLocation(ourShader.Program, "perlworl"); // set it manually
-        GLuint worluniform = glGetUniformLocation(ourShader.Program, "worl"); // set it manually
-        GLuint curluniform = glGetUniformLocation(ourShader.Program, "curl"); // set it manually
-        GLuint lastFrameuniform = glGetUniformLocation(ourShader.Program, "lastFrame"); // set it manually
-        GLuint weatheruniform = glGetUniformLocation(ourShader.Program, "weather"); // set it manually
-        GLuint atmosphereuniform = glGetUniformLocation(ourShader.Program, "atmosphere"); 
-
-    GLuint uppos = glGetUniformLocation(upscaleShader.Program, "pos");
-    GLuint upsize = glGetUniformLocation(upscaleShader.Program, "size");
+    GLuint checku = glGetUniformLocation(ourShader.Program, "check");
+    GLuint timeu = glGetUniformLocation(ourShader.Program, "time");
+    GLuint resolutionu = glGetUniformLocation(ourShader.Program, "resolution");
+    GLuint perlworluniform = glGetUniformLocation(ourShader.Program, "perlworl");
+    GLuint worluniform = glGetUniformLocation(ourShader.Program, "worl");
+    GLuint curluniform = glGetUniformLocation(ourShader.Program, "curl");
+    GLuint weatheruniform = glGetUniformLocation(ourShader.Program, "weather");
+    GLuint atmosphereuniform = glGetUniformLocation(ourShader.Program, "atmosphere"); 
+		
+		upscaleShader.Use();
     GLuint upuniformMatrix = glGetUniformLocation(upscaleShader.Program, "MVPM");
     GLuint upLFuniformMatrix = glGetUniformLocation(upscaleShader.Program, "LFMVPM");
     GLuint upcheck = glGetUniformLocation(upscaleShader.Program, "check");
-        GLuint buffuniform = glGetUniformLocation(upscaleShader.Program, "buff"); // set it manually
-        GLuint ponguniform = glGetUniformLocation(upscaleShader.Program, "pong"); // set it manually
+    GLuint upresolution = glGetUniformLocation(upscaleShader.Program, "resolution");
+    GLuint buffuniform = glGetUniformLocation(upscaleShader.Program, "buff");
+    GLuint ponguniform = glGetUniformLocation(upscaleShader.Program, "pong");
 
-    GLuint texsize = glGetUniformLocation(postShader.Program, "size");
-    GLuint texpos = glGetUniformLocation(postShader.Program, "pos");
-    GLuint checku = glGetUniformLocation(ourShader.Program, "check");
-    GLuint timeu = glGetUniformLocation(ourShader.Program, "time");
+		atmoShader.Use();
     GLuint atmotimeu = glGetUniformLocation(atmoShader.Program, "time");
     GLuint atmochecku = glGetUniformLocation(atmoShader.Program, "check");
+    GLuint atmoresolution = glGetUniformLocation(atmoShader.Program, "resolution");
+    GLuint atmouniformMatrix = glGetUniformLocation(atmoShader.Program, "MVPM");
 		
     // Game loop
 		int check = 0;
@@ -303,143 +288,122 @@ int main()
         }
         lastFrame = currentFrame;
         frames++;
+        LFMVPM = MVPM;
         // Check and call events
-                LFMVPM = MVPM;
         glfwPollEvents();
         Do_Movement();
 
-GLenum err;
-                while((err = glGetError()) != GL_NO_ERROR)
-{
-    std::cout<<err<<std::endl;
-}
+				GLenum err;
+        while((err = glGetError()) != GL_NO_ERROR)
+				{
+    			std::cout<<err<<std::endl;
+				}
 
 
-                glBindFramebuffer(GL_FRAMEBUFFER, skyfbo);
-                glViewport(0, 0, 512, 512);
+        glBindFramebuffer(GL_FRAMEBUFFER, skyfbo);
+        glViewport(0, 0, WIDTH/4, HEIGHT/4);
 
         atmoShader.Use();
 
         glUniformMatrix4fv(atmouniformMatrix, 1, GL_FALSE, glm::value_ptr(MVPM));
-                glUniform1f(atmotimeu, timePassed);
-                glUniform1i(atmochecku, check%16);
+        glUniform1f(atmotimeu, timePassed);
+        glUniform2f(atmoresolution, float(WIDTH/4), float(HEIGHT/4));
 
-        glBindVertexArray(VAO);
-                
-                glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(VAO);        
+        glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, skytex);
-                glGenerateMipmap(GL_TEXTURE_2D);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, skytex);
+        glGenerateMipmap(GL_TEXTURE_2D);
                 
-                glBindFramebuffer(GL_FRAMEBUFFER, buffer1);
-                glViewport(0, 0, 128, 128);
-            
-        //glClearColor(0.0f, 0.0f, 0.4f, 1.0f);
-        //glClear(GL_COLOR_BUFFER_BIT);
-                
-                ourShader.Use();
-                glUniform1i(checku, check%16);
-                glUniform1f(timeu, timePassed);
-                glUniform1i(camdirtyu, camera_dirty);
-        // Pass the matrices to the shader
+				
+				//Write to quarter scale buffer
+        glBindFramebuffer(GL_FRAMEBUFFER, buffer1);
+        glViewport(0, 0, WIDTH/4, WIDTH/4);
+                    
+        ourShader.Use();
+
+        glUniform1f(timeu, timePassed);
         glUniformMatrix4fv(uniformMatrix, 1, GL_FALSE, glm::value_ptr(MVPM));
-        glUniformMatrix4fv(LFuniformMatrix, 1, GL_FALSE, glm::value_ptr(LFMVPM));
-        glUniformMatrix4fv(viewMatrix, 1, GL_FALSE, glm::value_ptr(camera.GetViewMatrix()));
-                glUniform1f(aspectUniform, ASPECT);
+        glUniform1f(aspectUniform, ASPECT);
+        glUniform1i(checku, (check)%16);
+        glUniform2f(resolutionu, GLfloat(WIDTH/4), GLfloat(HEIGHT/4));
+
+        glUniform1i(perlworluniform, 0);
+        glUniform1i(worluniform, 1);
+        glUniform1i(curluniform, 2);
+        glUniform1i(weatheruniform, 3);
+        glUniform1i(atmosphereuniform, 4);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_3D, perlworltex);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_3D, worltex);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, curltex);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, weathertex);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, skytex);
 
         glBindVertexArray(VAO);
-
-        glUniform1i(perlworluniform, 0); // set it manually
-        glUniform1i(worluniform, 1); // set it manually
-        glUniform1i(curluniform, 2); // set it manually
-        glUniform1i(weatheruniform, 3); // set it manually
-        glUniform1i(atmosphereuniform, 4); // set it manually
-
-
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_3D, perlworltex);
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_3D, worltex);
-                glActiveTexture(GL_TEXTURE2);
-                glBindTexture(GL_TEXTURE_2D, curltex);
-                glActiveTexture(GL_TEXTURE3);
-                glBindTexture(GL_TEXTURE_2D, weathertex);//last frame
-                glActiveTexture(GL_TEXTURE4);
-                glBindTexture(GL_TEXTURE_2D, skytex);//last frame
-
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
                 
-                glBindFramebuffer(GL_FRAMEBUFFER, pongfbo);
-                glViewport(0, 0, 512, 512);
-                upscaleShader.Use();
+
+				//upscale the buffer into full size framebuffer
+        glBindFramebuffer(GL_FRAMEBUFFER, pongfbo);
+        glViewport(0, 0, WIDTH, HEIGHT);
+
+        upscaleShader.Use();
         glUniformMatrix4fv(upLFuniformMatrix, 1, GL_FALSE, glm::value_ptr(LFMVPM));
         glUniformMatrix4fv(upuniformMatrix, 1, GL_FALSE, glm::value_ptr(MVPM));
-                glUniform1i(upcheck, (check)%16);
+        glUniform1i(upcheck, (check)%16);
+        glUniform2f(upresolution, GLfloat(WIDTH), GLfloat(HEIGHT));
 
-        glBindVertexArray(VAO);
+        glUniform1i(buffuniform, 0);
+        glUniform1i(ponguniform, 1);
 
-                glUniform1i(buffuniform, 0); // set it manually
-                glUniform1i(ponguniform, 1); // set it manually
-
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, buffertex1);
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, fbotex);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, buffertex1);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, fbotex);
                 
-                glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
 
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+				
+				//copy the full size buffer so it can be read from next frame
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-        // Draw the triangle
         postShader.Use();
-
-                glUniform1f(texsize, 1.0);
-        // Pass the matrices to the shader
-        glUniformMatrix4fv(uniformMatrixpost, 1, GL_FALSE, glm::value_ptr(MVPM));
                 
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, pongfbotex);
 
         glBindVertexArray(VAO);
-                
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, pongfbotex);
-
-                glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
                 
 
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
-                glViewport(0, 0, WIDTH, HEIGHT);
+				//copy to the screen
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, WIDTH, HEIGHT);
 
-
-           // Render
-        // Clear the colorbuffer
-        glClearColor(0.2f, 0.4f, 0.8f, 1.0f);
-        //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-        // Draw the triangle
         postShader.Use();
-
-                glUniform1f(texsize, 1.0);
-        // Pass the matrices to the shader
-        glUniformMatrix4fv(uniformMatrixpost, 1, GL_FALSE, glm::value_ptr(MVPM));
                 
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, pongfbotex);
 
         glBindVertexArray(VAO);
-                
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, pongfbotex);
-
-                glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
                 
         // Swap the screen buffers
         glfwSwapBuffers(window);
-                camera_dirty++;
-                check++;
-    
+        check++;
     }
     // Properly de-allocate all resources once they've outlived their purpose
     glDeleteVertexArrays(1, &VAO);
@@ -481,7 +445,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         else if(action == GLFW_RELEASE)
             keys[key] = false;  
     }
-		camera_dirty = 0;
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
@@ -506,7 +469,6 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     glm::mat4 projection; 
     projection = glm::perspective(glm::radians(camera.Zoom), (float)WIDTH/(float)HEIGHT, 0.1f, 1000.0f);
     MVPM = projection * view;
-		camera_dirty = 0;
 } 
 
 
@@ -519,7 +481,6 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
     glm::mat4 projection; 
     projection = glm::perspective(glm::radians(camera.Zoom), (float)WIDTH/(float)HEIGHT, 0.1f, 1000.0f);
     MVPM = projection * view;
-		camera_dirty = true;
 }
 
 // the remap function used in the shaders as described in Gpu Pro 8. It must match when using pre packed textures

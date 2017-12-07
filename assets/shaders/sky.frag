@@ -1,8 +1,4 @@
 #version 330 core
-in vec3 ourColor;
-in vec3 TexCoords;
-in vec4 fragPos;
-
 //TODO update cloud shaping
 //TODO fix up weather texture
 //TODO add more flexibility to parameters
@@ -17,11 +13,9 @@ uniform sampler2D atmosphere;
 
 uniform int check;
 uniform mat4 MVPM; 
-uniform mat4 LFMVPM;
-uniform mat4 VM;
 uniform float aspect;
 uniform float time;
-uniform int camera_dirty;
+uniform vec2 resolution;
 
 out vec4 color;
 
@@ -245,7 +239,7 @@ void main()
 {
 	vec2 shift = vec2(floor(float(check)/4.0), mod(float(check), 4.0));	
 	//shift = vec2(0.0);
-	vec2 uv = (gl_FragCoord.xy*4.0+shift.yx)/vec2(512.0);
+	vec2 uv = (gl_FragCoord.xy*4.0+shift.yx)/(resolution*4.0);
 	uv = uv-vec2(0.5);
 	uv *= 2.0;
 	uv.x *= aspect;
@@ -257,7 +251,7 @@ void main()
 	vec3 dir = normalize(worldPos.xyz/worldPos.w);
 
 	vec4 col = vec4(0.0);
-	vec3 background = textureLod(atmosphere, TexCoords.xy, 0.0).xyz;
+	vec3 background = textureLod(atmosphere, gl_FragCoord.xy/resolution, 0.0).xyz;
 	//vec3 background = vec3(dot(normalize(dir), normalize(getSunDirection())));
 	if (dir.y>0.0) {
 		vec3 start = camPos+vec3(0.0, g_radius, 0.0)+dir*intersectSphere(camPos+vec3(0.0, g_radius, 0.0), dir, sky_b_radius);

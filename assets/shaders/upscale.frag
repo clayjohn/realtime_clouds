@@ -1,13 +1,11 @@
 #version 330 core
-in vec3 ourColor;
-in vec3 TexCoords;
-in vec4 fragPos;
 
 uniform sampler2D buff;
 uniform sampler2D pong;
 uniform int check;
 uniform mat4 MVPM;
 uniform mat4 LFMVPM;
+uniform vec2 resolution;
 
 out vec4 color;
 
@@ -21,14 +19,14 @@ void main()
 	vec2 shift = vec2(floor(float(check)/4.0), mod(float(check), 4.0));	
 
 	vec2 uv = floor(gl_FragCoord.xy/4.0);
-	uv = uv/vec2(128.0);
+	uv = uv/(resolution/4.0);
 
 	vec4 col = vec4(0.0);
 	if (check_pos(gl_FragCoord.xy/1.0, 4.0)!=check&&true==true){
 		//reprojection from http://john-chapman-graphics.blogspot.ca/2013/01/what-is-motion-blur-motion-pictures-are.html
 		//look into running all this on cpu
 		//discard;
-		uv = gl_FragCoord.xy/512.0;
+		uv = gl_FragCoord.xy/resolution;
 		vec2 uvd = uv-vec2(0.5);
 		uvd *= 2.0;
 		vec4 uvdir = (vec4(uvd, 1.0, 1.0));
@@ -46,7 +44,7 @@ void main()
 			lookup = uv.xy;
 			col = texture(buff, lookup);
 		} else {
-			uv = gl_FragCoord.xy/512.0;
+			uv = gl_FragCoord.xy/resolution;
 			col = texture(pong, lookup);
 		}
 	} else {
