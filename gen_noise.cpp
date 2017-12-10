@@ -9,6 +9,10 @@
 #include "include/TileableVolumeNoise/TileableVolumeNoise.h"
 #include "include/stb_image_write.h"
 
+//TODO make a repeating 2d cirrus noise texture
+//TODO Clean this up for github
+//TODO Make a repeating curl noise implementation
+
 /*
  * g++ include/TileableVolumeNoise/tileableVolumeNoise.cpp gen_noise.cpp -o gen_noise -std=c++11
  */
