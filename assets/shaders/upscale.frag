@@ -6,6 +6,7 @@ uniform int check;
 uniform mat4 MVPM;
 uniform mat4 LFMVPM;
 uniform vec2 resolution;
+uniform float downscale;
 
 out vec4 color;
 
@@ -16,13 +17,13 @@ int check_pos(vec2 x, float size) {
 
 void main()
 {
-	vec2 shift = vec2(floor(float(check)/4.0), mod(float(check), 4.0));	
+	vec2 shift = vec2(floor(float(check)/downscale), mod(float(check), downscale));	
 
-	vec2 uv = floor(gl_FragCoord.xy/4.0);
-	uv = uv/(resolution/4.0);
+	vec2 uv = floor(gl_FragCoord.xy/downscale);
+	uv = uv/(resolution/downscale);
 
 	vec4 col = vec4(0.0);
-	if (check_pos(gl_FragCoord.xy/1.0, 4.0)!=check&&true==true){
+	if (check_pos(gl_FragCoord.xy, downscale)!=check){
 		//reprojection from http://john-chapman-graphics.blogspot.ca/2013/01/what-is-motion-blur-motion-pictures-are.html
 		//look into running all this on cpu
 		//discard;
@@ -40,9 +41,7 @@ void main()
 		vec2 lookup = uv.xy+blurVec;
 		float mip = 0.0;
 		if (lookup.x<0.0||lookup.x>1.0||lookup.y<0.0||lookup.y>1.0) {
-			lookup = clamp(lookup, 0.0, 1.0);
-			lookup = uv.xy;
-			col = texture(buff, lookup);
+			col = texture(buff, uv.xy);
 		} else {
 			uv = gl_FragCoord.xy/resolution;
 			col = texture(pong, lookup);
