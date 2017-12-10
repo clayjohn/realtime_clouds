@@ -4,6 +4,7 @@
 //TODO add more flexibility to parameters
 	//rain
 	//
+//TODO add 2d cloud layer on top
 //TODO either integrate atmosphere or cut out completely
 	//integrated is nice because i can sample sun color anytime
 	//seperate is nice cause I do each pixel only once and can benefit from that cheap mipmapping
@@ -13,7 +14,6 @@ uniform sampler3D perlworl;
 uniform sampler3D worl;
 uniform sampler2D curl;
 uniform sampler2D weather;
-uniform sampler2D atmosphere;
 
 uniform int check;
 uniform mat4 MVPM; 
@@ -28,10 +28,6 @@ const float g_radius = 600000.0; //ground radius
 const float sky_b_radius = 601000.0;//bottom of cloud layer
 const float sky_t_radius = 602300.0;//top of cloud layer
 const float c_radius = 6008400.0; //2d noise layer
-
-
-
-
 
 
 /*
@@ -261,11 +257,10 @@ vec3 U2Tone(vec3 x) {
 }
 
 vec3 getSunDirection() {
-	vec3 sun_dir = vec3(0.0, 1.0, 0.0);
+	const vec3 sun_dir = vec3(0.0, 1.0, 0.0);
 
 	mat3 rot = rotate_around_x(-abs(sin(time / 20.)) * 90.);
-	sun_dir *= rot;
-	return sun_dir;
+	return sun_dir*rot;
 }
 
 vec3 getSunColor() {
@@ -274,7 +269,8 @@ vec3 getSunColor() {
 }
 
 vec3 getSkyColor() {
-	return texture(atmosphere, vec2(0.5, 0.9), 7).xyz;
+	vec3 dir = getSunDirection();
+	return mix(vec3(0.2, 0.3, 0.4), vec3(0.9, 0.9, 1.0), smoothstep(0.05, 0.2, dir.y));
 }
 
 int check_pos(vec2 x, float size) {
@@ -430,7 +426,7 @@ vec4 march(vec3 pos, vec3 end, vec3 dir, int depth) {
 		float beers = max(exp(-ld*ncd*lss), exp(-ld*0.25*ncd*lss)*0.7);
 		float powshug = 1.0-exp(-ld*ncd*lss*2.0);
 
-		vec3 ambient = 9.0*ambientLight*mix(0.25, 1.0, height_fraction);
+		vec3 ambient = 9.0*ambientLight*mix(0.05, 1.0, height_fraction);
 		vec3 sunC = sunLight*40.0;
 		L += (ambient+sunC*beers*powshug*2.0*phase)*(t)*T*ss;		
 		alpha += (1.0-dt)*(1.0-alpha);

@@ -86,7 +86,6 @@ int main()
     Shader ourShader("sky.vert", "sky.frag");
 		Shader postShader("tex.vert", "tex.frag");
 		Shader upscaleShader("upscale.vert", "upscale.frag");
-		Shader atmoShader("atmo.vert", "atmo.frag");
 
     // Set up vertex data (and buffer(s)) and attribute pointers
     GLfloat vertices[] = {
@@ -156,22 +155,7 @@ int main()
 		glBindFramebuffer(GL_FRAMEBUFFER, subbuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, subbuffertex, 0);
 
-
-		//small buffer for rendering sky background//should be removed and incorporated into sky
-		GLuint skyfbo, skytex;
-		
-    glGenFramebuffers(1, &skyfbo);
-    glGenTextures(1, &skytex);
-    glBindTexture(GL_TEXTURE_2D, skytex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH/downscale, HEIGHT/downscale, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-		glBindFramebuffer(GL_FRAMEBUFFER, skyfbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, skytex, 0);
-
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		//setup noise textures
 		GLuint curltex, worltex, perlworltex, weathertex;
@@ -240,7 +224,6 @@ int main()
     GLuint worluniform = glGetUniformLocation(ourShader.Program, "worl");
     GLuint curluniform = glGetUniformLocation(ourShader.Program, "curl");
     GLuint weatheruniform = glGetUniformLocation(ourShader.Program, "weather");
-    GLuint atmosphereuniform = glGetUniformLocation(ourShader.Program, "atmosphere"); 
 		
 		upscaleShader.Use();
     GLuint upuniformMatrix = glGetUniformLocation(upscaleShader.Program, "MVPM");
@@ -250,12 +233,6 @@ int main()
     GLuint updownscale = glGetUniformLocation(upscaleShader.Program, "downscale");
     GLuint buffuniform = glGetUniformLocation(upscaleShader.Program, "buff");
     GLuint ponguniform = glGetUniformLocation(upscaleShader.Program, "pong");
-
-		atmoShader.Use();
-    GLuint atmotimeu = glGetUniformLocation(atmoShader.Program, "time");
-    GLuint atmochecku = glGetUniformLocation(atmoShader.Program, "check");
-    GLuint atmoresolution = glGetUniformLocation(atmoShader.Program, "resolution");
-    GLuint atmouniformMatrix = glGetUniformLocation(atmoShader.Program, "MVPM");
 		
     // Game loop
 		int check = 0;
@@ -286,25 +263,7 @@ int main()
     			std::cout<<err<<std::endl;
 				}
 
-/*
-        glBindFramebuffer(GL_FRAMEBUFFER, skyfbo);
-        glViewport(0, 0, WIDTH/downscale, HEIGHT/downscale);
-
-        atmoShader.Use();
-
-        glUniformMatrix4fv(atmouniformMatrix, 1, GL_FALSE, glm::value_ptr(MVPM));
-        glUniform1f(atmotimeu, timePassed);
-        glUniform2f(atmoresolution, float(WIDTH/downscale), float(HEIGHT/downscale));
-
-        glBindVertexArray(VAO);        
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        glBindVertexArray(0);
-
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, skytex);
-        glGenerateMipmap(GL_TEXTURE_2D);
-        */        
-				
+			
 				//Write to quarter scale buffer
         glBindFramebuffer(GL_FRAMEBUFFER, subbuffer);
         glViewport(0, 0, WIDTH/downscale, HEIGHT/downscale);
@@ -322,7 +281,6 @@ int main()
         glUniform1i(worluniform, 1);
         glUniform1i(curluniform, 2);
         glUniform1i(weatheruniform, 3);
-        glUniform1i(atmosphereuniform, 4);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_3D, perlworltex);
@@ -332,8 +290,6 @@ int main()
         glBindTexture(GL_TEXTURE_2D, curltex);
         glActiveTexture(GL_TEXTURE3);
         glBindTexture(GL_TEXTURE_2D, weathertex);
-        glActiveTexture(GL_TEXTURE4);
-        glBindTexture(GL_TEXTURE_2D, skytex);
 
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
