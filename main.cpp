@@ -20,13 +20,9 @@
 #include "include/stb_image.h"
 
 
-//callbacks
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-float remap(float originalValue, float originalMin, float originalMax, float newMin, float newMax);
-
-//function prototypes
 void Do_Movement();
 
 // Camera
@@ -34,15 +30,15 @@ Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 bool keys[1024];
 GLfloat lastX = 400, lastY = 300;
 bool firstMouse = true;
+glm::mat4 MVPM;
+glm::mat4 LFMVPM;
 
+//measuring time
 GLfloat deltaTime = 0.0f;
 GLfloat lastFrame = 0.0f;
 GLuint frames = 0;
 GLfloat timePassed = 0.0f;
 GLfloat startTime = 0.0f;
-glm::mat4 MVPM;
-glm::mat4 LFMVPM;
-
 
 // Window dimensions
 const GLuint WIDTH = 512, HEIGHT = 512;
@@ -53,58 +49,49 @@ GLfloat ASPECT = float(WIDTH)/float(HEIGHT);
 // The MAIN function, from here we start the application and run the game loop
 int main()
 {
-    // Init GLFW
     glfwInit();
-    // Set all the required options for GLFW
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-    // Create a GLFWwindow object that we can use for GLFW's functions
     GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Realtime Clouds", NULL, NULL);
     glfwMakeContextCurrent(window);
 				
-    // Set the required callback functions
-    glfwSetKeyCallback(window, key_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
+		glfwSetKeyCallback(window, key_callback);
 
-    //glfw options
     glfwSetWindowPos(window, 200, 17);//so you can see frame rate
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		glfwSwapInterval(0);//turn off vsync
-    // Set this to true so GLEW knows to use a modern approach to retrieving function pointers and extensions
+		
+		//GLEW init
     glewExperimental = GL_TRUE;
-    // Initialize GLEW to setup the OpenGL Function pointers
     glewInit();
 
-    // Define the viewport dimensions
+		//not sure this is necessary?
     glViewport(0, 0, WIDTH, HEIGHT);
 
-    // Build and compile our shader programs
+		//Shader class built on the one in learnopengl.com
     Shader ourShader("sky.vert", "sky.frag");
 		Shader postShader("tex.vert", "tex.frag");
 		Shader upscaleShader("upscale.vert", "upscale.frag");
 
-    // Set up vertex data (and buffer(s)) and attribute pointers
     GLfloat vertices[] = {
-        // Positions      
-       -1.0f, -1.0f,
-       -1.0f, 3.0f,
-       3.0f,  -1.0f,
+ 			 -1.0f, -1.0f,
+       -1.0f,  3.0f,
+        3.0f, -1.0f,
     };
 
     GLuint VBO, VAO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
-    // Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    // Position attribute
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), (GLvoid*)0);
     glEnableVertexAttribArray(0);
 
@@ -204,7 +191,7 @@ int main()
 		stbi_image_free(perlWorlNoiseArray);
 
 
-        //set up Model-View-Projection matrix
+    //set up Model-View-Projection matrix
     //this way you only update when camera moves
     glm::mat4 view;
     view = camera.GetViewMatrix();
@@ -212,7 +199,7 @@ int main()
     projection = glm::perspective(glm::radians(camera.Zoom), (float)WIDTH/(float)HEIGHT, 0.1f, 1000.0f);
     MVPM = projection * view ;
 
-        //setup shader info
+    //setup shader uniform info
     ourShader.Use();   
     GLuint uniformMatrix = glGetUniformLocation(ourShader.Program, "MVPM");
     GLuint aspectUniform = glGetUniformLocation(ourShader.Program, "aspect");
@@ -234,11 +221,10 @@ int main()
     GLuint buffuniform = glGetUniformLocation(upscaleShader.Program, "buff");
     GLuint ponguniform = glGetUniformLocation(upscaleShader.Program, "pong");
 		
-    // Game loop
-		int check = 0;
+		int check = 0;//used for checkerboarding in the upscale shader
     while (!glfwWindowShouldClose(window))
     {
-         // Set frame time
+				//This block measures frame time in ms or fps
         GLfloat currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         timePassed = currentFrame;
@@ -252,11 +238,14 @@ int main()
         }
         lastFrame = currentFrame;
         frames++;
-        LFMVPM = MVPM;
-        // Check and call events
+
+        LFMVPM = MVPM;//copy over last MVP matrix for use in frame reprojection
+
+				//check camera movement
         glfwPollEvents();
         Do_Movement();
 
+				//check for errors TODO wrap in a define DEBUG
 				GLenum err;
         while((err = glGetError()) != GL_NO_ERROR)
 				{
@@ -335,7 +324,6 @@ int main()
 
 				//copy to the screen
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, WIDTH, HEIGHT);
 
         postShader.Use();
                 
@@ -350,46 +338,31 @@ int main()
         glfwSwapBuffers(window);
         check++;
     }
-    // Properly de-allocate all resources once they've outlived their purpose
+		//not sure if this is necessary//it certainly looks bad
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    // Terminate GLFW, clearing any resources allocated by GLFW.
+    glDeleteBuffers(1, &fbo);
+    glDeleteBuffers(1, &copyfbo);
+    glDeleteBuffers(1, &subbuffer);
+		glDeleteTextures(1, &fbotex);
+		glDeleteTextures(1, &copyfbotex);
+		glDeleteTextures(1, &subbuffertex);
+		glDeleteTextures(1, &perlworltex);
+		glDeleteTextures(1, &worltex);
+		glDeleteTextures(1, &curltex);
+		glDeleteTextures(1, &weathertex);
     glfwTerminate();
     return 0;
 }
 
 void Do_Movement()
 {
-    // Camera controls
-    if(keys[GLFW_KEY_W])
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if(keys[GLFW_KEY_S])
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if(keys[GLFW_KEY_A])
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if(keys[GLFW_KEY_D])
-        camera.ProcessKeyboard(RIGHT, deltaTime);
 
     glm::mat4 view;
     view = camera.GetViewMatrix();
     glm::mat4 projection; 
     projection = glm::perspective(glm::radians(camera.Zoom), (float)WIDTH/(float)HEIGHT, 0.1f, 1000.0f);
     MVPM = projection * view;
-}
-
-// Is called whenever a key is pressed/released via GLFW
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
-{
-    //cout << key << endl;
-    if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, GL_TRUE);
-    if (key >= 0 && key < 1024)
-    {
-        if(action == GLFW_PRESS)
-            keys[key] = true;
-        else if(action == GLFW_RELEASE)
-            keys[key] = false;  
-    }
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
@@ -428,8 +401,16 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
     MVPM = projection * view;
 }
 
-// the remap function used in the shaders as described in Gpu Pro 8. It must match when using pre packed textures
-float remap(float originalValue, float originalMin, float originalMax, float newMin, float newMax)
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
-	return newMin + (((originalValue - originalMin) / (originalMax - originalMin)) * (newMax - newMin));
+    //cout << key << endl;
+    if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, GL_TRUE);
+    if (key >= 0 && key < 1024)
+    {
+        if(action == GLFW_PRESS)
+            keys[key] = true;
+        else if(action == GLFW_RELEASE)
+            keys[key] = false;  
+    }
 }

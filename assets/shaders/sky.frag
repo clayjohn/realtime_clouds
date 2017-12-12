@@ -2,13 +2,10 @@
 //TODO update cloud shaping
 //TODO fix up weather texture
 //TODO add more flexibility to parameters
-	//rain
-	//
+	// rain/coverage
+	// earth radius
+	// sky color //maybe LUT // or just vec3 for coefficients
 //TODO add 2d cloud layer on top
-//TODO either integrate atmosphere or cut out completely
-	//integrated is nice because i can sample sun color anytime
-	//seperate is nice cause I do each pixel only once and can benefit from that cheap mipmapping
-	//calls to atmosphere function take ~1ms on chromebook//may not be too bad to take three samples per frame
 
 uniform sampler3D perlworl;
 uniform sampler3D worl;
@@ -24,18 +21,19 @@ uniform float downscale;
 
 out vec4 color;
 
-const float g_radius = 600000.0; //ground radius
-const float sky_b_radius = 601000.0;//bottom of cloud layer
-const float sky_t_radius = 602300.0;//top of cloud layer
+//I like the look of the small sky, but could be tweaked however
+const float g_radius = 200000.0; //ground radius
+const float sky_b_radius = 201000.0;//bottom of cloud layer
+const float sky_t_radius = 202300.0;//top of cloud layer
 const float c_radius = 6008400.0; //2d noise layer
 
 
 /*
-Atmospheric scattering based off of: 
+Atmospheric scattering based off of: https://www.shadertoy.com/view/XtBXDz
+Author: valentingalea
 */
 
 #define PI 3.14159265359
-#define BIAS 1e-4 // small offset to avoid self-intersections
 
 // scattering coefficients at sea level (m)
 const vec3 betaR = vec3(5.5e-6, 13.0e-6, 22.4e-6); // Rayleigh 
@@ -52,19 +50,13 @@ const float atmosphere_radius = 6420e3; // (m)
 vec3 sun_dir = vec3(0, 1, 0);
 const float sun_power = 30.0;
 
-
 const int num_samples = 16;
 const int num_samples_light = 8;
-
-
 
 struct ray_t {
 	vec3 origin;
 	vec3 direction;
 };
-
-
-
 
 mat3 rotate_around_x(const in float angle_degrees)
 {
@@ -96,17 +88,9 @@ float rayleigh_phase_func(float mu)
 				(16. * PI);
 }
 
-// Henyey-Greenstein phase function factor [-1, 1]
-// represents the average cosine of the scattered directions
-// 0 is isotropic scattering
-// > 1 is forward scattering, < 1 is backwards
-float henyey_greenstein_phase_func(float mu)
-{
-const float g = 0.76;
-	return
-						(1. - g*g)
-	/ //---------------------------------------------
-		((4. + PI) * pow(1. + g*g - 2.*g*mu, 1.5));
+float HG(float costheta, float g) {
+	const float k = 0.0795774715459; 
+	return k*(1.0-g*g)/(pow(1.0+g*g-2.0*g*costheta, 1.5));
 }
 
 bool get_sun_light(
@@ -160,8 +144,7 @@ vec3 get_incident_light(const in ray_t ray)
 	//   (the phase angle between 2 directions)
 	// * integrates to 1 over the entire sphere of directions
 	float phaseR = rayleigh_phase_func(mu);
-	float phaseM =
-	henyey_greenstein_phase_func(mu);
+	float phaseM = HG(mu, 0.96);//0.76 more proper but this looks nice
 
 	// optical depth (or "average density")
 	// represents the accumulated extinction coefficients
@@ -213,27 +196,10 @@ vec3 get_incident_light(const in ray_t ray)
 		sumM * phaseM * betaM);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/*
+	 ===============================================================
+	 end of atmospheric scattering
+*/
 
 const vec3 RANDOM_VECTORS[6] = vec3[6]
 (
@@ -245,7 +211,7 @@ const vec3 RANDOM_VECTORS[6] = vec3[6]
 	vec3(-0.16852403f,  0.14748697f,  0.97460106f)
 	);
 
-vec3 U2Tone(vec3 x) {
+vec3 U2Tone(const vec3 x) {
 	const float A = 0.15;
 	const float B = 0.50;
 	const float C = 0.10;
@@ -273,23 +239,18 @@ vec3 getSkyColor() {
 	return mix(vec3(0.2, 0.3, 0.4), vec3(0.9, 0.9, 1.0), smoothstep(0.05, 0.2, dir.y));
 }
 
-int check_pos(vec2 x, float size) {
-	return int(mod(floor(x.x), size) + mod(floor(x.y), size)*size);
-}
-
 float hash(vec3 p) {
 	return texture(worl, p*0.01).x;
 }
 
-
 // fractional value for sample position in the cloud layer
-float GetHeightFractionForPoint(vec3 inPosition, vec2 inCloudMinMax)
+float GetHeightFractionForPoint(float inPosition)
 { // get global fractional position in cloud zone
-	float height_fraction = (inPosition.y - inCloudMinMax.x ) / (inCloudMinMax.y - inCloudMinMax.x); 
+	float height_fraction = (inPosition -  sky_b_radius) / (sky_t_radius - sky_b_radius); 
 	return clamp(height_fraction, 0.0, 1.0);
 }
 
-vec4 mixGradients( float cloudType){
+vec4 mixGradients(const float cloudType){
 
 	const vec4 STRATUS_GRADIENT = vec4(0.02f, 0.05f, 0.09f, 0.11f);
 	const vec4 STRATOCUMULUS_GRADIENT = vec4(0.02f, 0.2f, 0.48f, 0.625f);
@@ -300,12 +261,12 @@ vec4 mixGradients( float cloudType){
 	return STRATUS_GRADIENT * stratus + STRATOCUMULUS_GRADIENT * stratocumulus + CUMULUS_GRADIENT * cumulus;
 }
 
-float densityHeightGradient(float heightFrac, float cloudType) {
+float densityHeightGradient(const float heightFrac, const float cloudType) {
 	vec4 cloudGradient = mixGradients(cloudType);
 	return smoothstep(cloudGradient.x, cloudGradient.y, heightFrac) - smoothstep(cloudGradient.z, cloudGradient.w, heightFrac);
 }
 
-float intersectSphere(vec3 pos, vec3 dir, float r) {
+float intersectSphere(const vec3 pos, const vec3 dir, const float r) {
     float a = dot(dir, dir);
     float b = 2.0 * dot(dir, pos);
     float c = dot(pos, pos) - (r * r);
@@ -318,7 +279,7 @@ float intersectSphere(vec3 pos, vec3 dir, float r) {
 // Utility function that maps a value from one range to another. 
 
 // the remap function used in the shaders as described in Gpu Pro 7. It must match when using pre packed textures
-float remap(float originalValue, float originalMin, float originalMax, float newMin, float newMax)
+float remap(const float originalValue, const float originalMin, const float originalMax, const float newMin, const float newMax)
 {
 	return newMin + (((originalValue - originalMin) / (originalMax - originalMin)) * (newMax - newMin));
 }
@@ -349,16 +310,9 @@ float numericalMieFit(float costh)
 }
 
 
-
-float HG(vec3 inv, vec3 outv, float g) {
-	float costheta = dot(inv, outv);
-	const float k = 0.0795774715459; 
-	return k*(1.0-g*g)/(pow(1.0+g*g-2.0*g*costheta, 1.5));
-}
-
-float density(vec3 p,vec3 weather, bool hq, float LOD) {
+float density(vec3 p, vec3 weather,const bool hq,const float LOD) {
 	p.x += time*10.0;
-	float height_fraction = GetHeightFractionForPoint(p, vec2(float(sky_b_radius), float(sky_t_radius)));
+	float height_fraction = GetHeightFractionForPoint(length(p));
 	vec4 n = textureLod(perlworl, p*0.0003, LOD);
 	float fbm = n.g*0.625+n.b*0.25+n.a*0.125;
 	weather.x = smoothstep(0.6, 1.2, weather.x);
@@ -378,7 +332,7 @@ float density(vec3 p,vec3 weather, bool hq, float LOD) {
 	return clamp(base_cloud, 0.0, 1.0);
 }
 
-vec4 march(vec3 pos, vec3 end, vec3 dir, int depth) {
+vec4 march(const vec3 pos, const vec3 end, vec3 dir, const int depth) {
 	float T = 1.0;
 	float alpha = 0.0;
 	vec3 p = pos;
@@ -390,16 +344,17 @@ vec4 march(vec3 pos, vec3 end, vec3 dir, int depth) {
 	dir += hash(p);//helps eliminate some weird spherical artifacts//should solve the root of the artifact rather than hack this, but oh well
 	int count=0;
 	float t = 1.0;
-	float phase = max(HG(normalize(ldir), normalize(dir), 0.6), HG(normalize(ldir), normalize(dir), (0.99-1.3*normalize(ldir).y)));
+	float costheta = dot(normalize(ldir), normalize(dir));
+	float phase = max(HG(costheta, 0.6), HG(costheta, (0.99-1.3*normalize(ldir).y)));
 	vec3 ambientLight = getSkyColor();
 	vec3 sunLight = getSunColor();
 	for (int i=0;i<depth;i++) {
 		p += dir;
-		float height_fraction = GetHeightFractionForPoint(p, vec2(float(sky_b_radius), float(sky_t_radius)));
+		float height_fraction = GetHeightFractionForPoint(length(p));
 		float weather_scale = 0.00008;
 		vec3 weather_sample = texture(weather, p.xz*weather_scale).xyz;
 		t = density(p, weather_sample, true, 0.0);
-		const float ldt = 0.5;
+		const float ldt = 0.4;
 		float dt = exp(-ldt*t*ss);
 		T *= dt;		
 		vec3 lp = p;
@@ -431,9 +386,6 @@ vec4 march(vec3 pos, vec3 end, vec3 dir, int depth) {
 		L += (ambient+sunC*beers*powshug*2.0*phase)*(t)*T*ss;		
 		alpha += (1.0-dt)*(1.0-alpha);
 	}
-	//L = U2Tone(L);
-	//L /= U2Tone(vec3(40.0));
-	//L = sqrt(L);
 	return vec4(L, alpha);
 }
 

@@ -5,7 +5,6 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 
 #include "include/glm/glm.hpp"
-//#include "include/FastNoise/FastNoise.h"
 #include "include/TileableVolumeNoise/TileableVolumeNoise.h"
 #include "include/stb_image_write.h"
 
@@ -31,7 +30,6 @@ float smoothstep(float edge0, float edge1, float x) {
 int main() {
 		//initialize perlin noise arrays for textures
 		std::cout<<"Generating Perlin Noise for LUT's"<<std::endl;
-//		FastNoise myNoise; // Create a FastNoise object
 		std::cout<<"Generating weather Noise 512x512 RGB"<<std::endl;
 		char *NoiseArray = new char[512*512*3];
 		for (int i =0;i<512*512*3;i+=3) {
@@ -58,17 +56,12 @@ int main() {
 		char *curlNoiseArray = new char[128*128*3];
 		myNoise.SetFrequency(0.08);
 		for (int i =0;i<128*128*3;i+=3) {
-			float *ttt = myNoise.GetDerivPerlin(100.013+(i/3)%128, 0.173+(i/3)/128, 0.55);
-			float curl[3] = {ttt[3]-ttt[2], ttt[1]-ttt[3], ttt[2]-ttt[1]};
-			delete ttt;
-			curlNoiseArray[i] = char(curl[0]*50+128);
-			curlNoiseArray[i+1] = char(curl[1]*50+128);
-			curlNoiseArray[i+2] = char(curl[2]*50+128);
+		//generate curl noise
 		}
 		stbi_write_bmp("assets/curlnoise.bmp", 128, 128, 3, curlNoiseArray);
 		delete curlNoiseArray;
 */
-		
+	/*	
 		//worley and perlin-worley are from github/sebh/TileableVolumeNoise
 		//which is in turn based on noise described in 'real time rendering of volumetric cloudscapes for horizon zero dawn'
 		std::cout<<"Generating Worley Noise 32x32x32 RGB"<<std::endl;
@@ -89,7 +82,7 @@ int main() {
 		}
 		stbi_write_bmp("assets/worlnoise.bmp", 32*32, 32, 3, worlNoiseArray);
 		delete worlNoiseArray;
-		
+*/	
 		/*
 		std::cout<<"Generating Perlin-Worley Noise 128x128x128 RGBA"<<std::endl;
 		char *perlWorlNoiseArray = new char[128*128*128*4];
