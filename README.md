@@ -3,15 +3,12 @@ Experiment with generating clouds in real time on low end computer
 
 ## About
 This is an experiment in recreating procedural clouds that are similar in quality to the ones in Horizon Zero Dawn
-
 The core algorithm is very similar to what is described in the various articles on the clouds in Horizen Zero Dawn
 
 As of the writing of this the program runs between ~15-50ms/frame on my chromebook (2.4-GHz Intel Bay Trail-M dual-core N2830)
-
 And on my desktop computer it runs ~0.5-2ms/frame (Nvidia GTX 1050)
 
 This project is far from finished, it will still undergo various optimizations and tweaks as well as added functionality
-
 The goal is to make this into something that can be used in other projects
 
 ### Screenshots!
