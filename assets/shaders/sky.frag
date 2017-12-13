@@ -47,7 +47,6 @@ const float hM = 1200.0; // Mie
 const float earth_radius = 6360e3; // (m)
 const float atmosphere_radius = 6420e3; // (m)
 
-vec3 sun_dir = vec3(0, 1, 0);
 const float sun_power = 30.0;
 
 const int num_samples = 16;
@@ -64,6 +63,13 @@ mat3 rotate_around_x(const in float angle_degrees)
 	float _sin = sin(angle);
 	float _cos = cos(angle);
 	return mat3(1, 0, 0, 0, _cos, -_sin, 0, _sin, _cos);
+}
+
+vec3 getSunDirection() {
+	const vec3 sun_dir = vec3(0.0, 1.0, 0.0);
+
+	mat3 rot = rotate_around_x(-abs(sin(time / 20.)) * 100.);
+	return sun_dir*rot;
 }
 
 bool isect_sphere(const in ray_t ray, inout float t0, inout float t1)
@@ -134,6 +140,7 @@ vec3 get_incident_light(const in ray_t ray)
 
 	float march_step = t1 / float(num_samples);
 
+	vec3 sun_dir = getSunDirection();
 	// cosine of angle between view and light directions
 	float mu = dot(ray.direction, sun_dir);
 
@@ -222,21 +229,21 @@ vec3 U2Tone(const vec3 x) {
    return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
 }
 
-vec3 getSunDirection() {
-	const vec3 sun_dir = vec3(0.0, 1.0, 0.0);
-
-	mat3 rot = rotate_around_x(-abs(sin(time / 20.)) * 90.);
-	return sun_dir*rot;
-}
-
 vec3 getSunColor() {
-	vec3 dir = getSunDirection();
-	return mix(vec3(1.0, 0.3, 0.0), vec3(0.99), smoothstep(0.05, 0.2, dir.y));
+	vec3 sun_dir = getSunDirection();
+	ray_t ray = ray_t(vec3(0.0, earth_radius+1.0, 0.0), normalize(sun_dir+vec3(0.01, 0.01, 0.0)));
+	return get_incident_light(ray)*0.02;
 }
 
 vec3 getSkyColor() {
-	vec3 dir = getSunDirection();
-	return mix(vec3(0.2, 0.3, 0.4), vec3(0.9, 0.9, 1.0), smoothstep(0.05, 0.2, dir.y));
+	ray_t ray = ray_t(vec3(0.0, earth_radius+1.0, 0.0), normalize(vec3(0.2, 0.8, 0.3)));
+	ray_t ray1 = ray_t(vec3(0.0, earth_radius+1.0, 0.0), normalize(vec3(0.0, -0.5, -0.5)));
+	ray_t ray2 = ray_t(vec3(0.0, earth_radius+1.0, 0.0), normalize(vec3(0.0, 0.3, 0.4)));
+	vec3 col = get_incident_light(ray);
+	col += get_incident_light(ray1);
+	col += get_incident_light(ray2);
+	return col;
+	//return mix(vec3(0.2, 0.3, 0.4), vec3(0.9, 0.9, 1.0), smoothstep(0.05, 0.2, dir.y));
 }
 
 float hash(vec3 p) {
@@ -322,11 +329,11 @@ float density(vec3 p, vec3 weather,const bool hq,const float LOD) {
 	base_cloud = remap(base_cloud*g, 1.0-cloud_coverage, 1.0, 0.0, 1.0); 
 	base_cloud *= cloud_coverage;
 	if (hq) {
-		vec2 whisp = texture(curl, p.xy*0.0003).xy*2.0-1.0;
-		p.xy += whisp*200.0*(1.0-height_fraction);
+		vec2 whisp = texture(curl, p.xy*0.0003).xy;
+		p.xy += whisp*400.0*(1.0-height_fraction);
 		vec3 hn = texture(worl, p*0.002, LOD-2.0).xyz;
 		float hfbm = hn.r*0.625+hn.g*0.25+hn.b*0.125;
-		hfbm = mix(hfbm, 1.0-hfbm, clamp(height_fraction*5.0, 0.0, 1.0));
+		hfbm = mix(hfbm, 1.0-hfbm, clamp(height_fraction*3.0, 0.0, 1.0));
 		base_cloud = remap(base_cloud, hfbm*0.2, 1.0, 0.0, 1.0);
 	}
 	return clamp(base_cloud, 0.0, 1.0);
@@ -340,7 +347,7 @@ vec4 march(const vec3 pos, const vec3 end, vec3 dir, const int depth) {
 	const float t_dist = sky_t_radius-sky_b_radius;
 	float lss = t_dist/float(depth);
 	vec3 ldir = getSunDirection()*ss;
-	vec3 L = vec3(0.0);//getSkyColor();
+	vec3 L = vec3(0.0);
 	dir += hash(p);//helps eliminate some weird spherical artifacts//should solve the root of the artifact rather than hack this, but oh well
 	int count=0;
 	float t = 1.0;
@@ -422,7 +429,6 @@ void main()
 
 		vec3 background = vec3(0.0);
 		if (volume.a<0.99) {
-			sun_dir = getSunDirection();
 			ray_t ray = ray_t(vec3(0.0, earth_radius+1.0, 0.0), dir);
     	background += get_incident_light(ray)*8.0;
 		}
@@ -434,6 +440,7 @@ void main()
 		if (volume.a>1.0) {col = vec4(1.0, 0.0, 0.0, 1.0);}
 	} else {
 		col = vec4(vec3(0.4), 1.0);
+		col = texture(weather, uv*0.5).yyyw;
 	}
 	color = col;
 }
