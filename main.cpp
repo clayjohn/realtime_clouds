@@ -212,6 +212,7 @@ int main()
     GLuint worluniform = glGetUniformLocation(ourShader.Program, "worl");
     GLuint curluniform = glGetUniformLocation(ourShader.Program, "curl");
     GLuint weatheruniform = glGetUniformLocation(ourShader.Program, "weather");
+    GLuint psunPosition = glGetUniformLocation(ourShader.Program, "sunPosition");//for preetham
 		
 		upscaleShader.Use();
     GLuint upuniformMatrix = glGetUniformLocation(upscaleShader.Program, "MVPM");
@@ -219,17 +220,10 @@ int main()
     GLuint upcheck = glGetUniformLocation(upscaleShader.Program, "check");
     GLuint upresolution = glGetUniformLocation(upscaleShader.Program, "resolution");
     GLuint updownscale = glGetUniformLocation(upscaleShader.Program, "downscale");
+    GLuint upaspect = glGetUniformLocation(upscaleShader.Program, "aspect");
     GLuint buffuniform = glGetUniformLocation(upscaleShader.Program, "buff");
     GLuint ponguniform = glGetUniformLocation(upscaleShader.Program, "pong");
 
-		preethamShader.Use();
-    GLuint pMVPM = glGetUniformLocation(preethamShader.Program, "MVPM");
-    GLuint pturbidity = glGetUniformLocation(preethamShader.Program, "turbidity");
-    GLuint psunPosition = glGetUniformLocation(preethamShader.Program, "sunPosition");
-    GLuint prayleigh = glGetUniformLocation(preethamShader.Program, "rayleigh");
-    GLuint pmieCoefficient = glGetUniformLocation(preethamShader.Program, "mieCoefficient");
-    GLuint pluminance = glGetUniformLocation(preethamShader.Program, "luminance");
-    GLuint pmieDirectionalG = glGetUniformLocation(preethamShader.Program, "mieDirectionalG");
 		
 		int check = 0;//used for checkerboarding in the upscale shader
     while (!glfwWindowShouldClose(window))
@@ -281,6 +275,18 @@ int main()
         glUniform1i(curluniform, 2);
         glUniform1i(weatheruniform, 3);
 
+				//variables for preetham model
+					const float PI = 3.141592653589793238462643383279502884197169;
+					float theta = PI * ( -0.23+0.25*sin(timePassed*0.1));
+					float phi = 2 * PI * (-0.25);
+					float sunposx = cos( phi );
+					float sunposy = sin( phi ) * sin( theta );
+					float sunposz = sin( phi ) * cos( theta );
+	
+        glUniform3f(psunPosition, GLfloat(sunposx), GLfloat(sunposy), GLfloat(sunposz));
+          
+
+
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_3D, perlworltex);
         glActiveTexture(GL_TEXTURE1);
@@ -305,6 +311,7 @@ int main()
         glUniform1i(upcheck, (check)%downscalesq);
         glUniform2f(upresolution, GLfloat(WIDTH), GLfloat(HEIGHT));
         glUniform1f(updownscale, GLfloat(downscale));
+        glUniform1f(upaspect, ASPECT);
 
         glUniform1i(buffuniform, 0);
         glUniform1i(ponguniform, 1);
@@ -335,24 +342,8 @@ int main()
 				//copy to the screen
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        //postShader.Use();
-					float distance = 400000.0;
-					const float PI = 3.141592653589793238462643383279502884197169;
-					float theta = PI * (-0.01 );
-					float phi = 2 * PI * (-0.25 );
-					float sunposx = distance * cos( phi );
-					float sunposy = distance * sin( phi ) * sin( theta );
-					float sunposz = distance * sin( phi ) * cos( theta );
-	
-				preethamShader.Use();
-        glUniformMatrix4fv(pMVPM, 1, GL_FALSE, glm::value_ptr(MVPM));
-        glUniform1f(pturbidity, GLfloat(10.0));
-        glUniform1f(prayleigh, GLfloat(2.0));
-        glUniform1f(pmieCoefficient, GLfloat(0.005));
-        glUniform1f(pluminance, GLfloat(1.0));
-        glUniform1f(pmieDirectionalG, GLfloat(0.8));
-        glUniform3f(psunPosition, GLfloat(sunposx), GLfloat(sunposy), GLfloat(sunposz));
-                
+        postShader.Use();
+				      
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, fbotex);
 

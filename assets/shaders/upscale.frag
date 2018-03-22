@@ -7,6 +7,7 @@ uniform mat4 MVPM;
 uniform mat4 LFMVPM;
 uniform vec2 resolution;
 uniform float downscale;
+uniform float aspect;
 
 out vec4 color;
 
@@ -27,8 +28,7 @@ void main()
 		//reprojection from http://john-chapman-graphics.blogspot.ca/2013/01/what-is-motion-blur-motion-pictures-are.html
 		//look into running all this on cpu
 		//discard;
-		uv = gl_FragCoord.xy/resolution;
-		vec2 uvd = uv-vec2(0.5);
+		vec2 uvd = gl_FragCoord.xy/resolution-vec2(0.5);
 		uvd *= 2.0;
 		vec4 uvdir = (vec4(uvd, 1.0, 1.0));
 		mat4 invmat = inverse(MVPM);
