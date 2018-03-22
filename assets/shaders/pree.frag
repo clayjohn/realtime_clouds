@@ -1,12 +1,13 @@
 #version 330 core
 
+out vec4 Color;
+
 in vec3 vSunDirection;
 in float vSunfade;
 in vec3 vBetaR;
 in vec3 vBetaM;
 in float vSunE;
 
-out vec4 Color;
 
 uniform float luminance;
 uniform float mieDirectionalG;
