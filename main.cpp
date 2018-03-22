@@ -77,7 +77,7 @@ int main()
     Shader ourShader("sky.vert", "sky.frag");
 		Shader postShader("tex.vert", "tex.frag");
 		Shader upscaleShader("upscale.vert", "upscale.frag");
-		Shader preethamShader("pree.vert", "pree.frag");
+		//Shader preethamShader("pree.vert", "pree.frag");
 
     GLfloat vertices[] = {
  			 -1.0f, -1.0f,
