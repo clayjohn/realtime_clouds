@@ -299,20 +299,19 @@ float remap(const float originalValue, const float originalMin, const float orig
 }
 
 float density(vec3 p, vec3 weather,const bool hq,const float LOD) {
-	p.x += time*10.0;
+	p.x += time*20.0;
 	float height_fraction = GetHeightFractionForPoint(length(p));
 	vec4 n = textureLod(perlworl, p*0.0003, LOD);
 	float fbm = n.g*0.625+n.b*0.25+n.a*0.125;
-	weather.x = smoothstep(0.6, 1.2, weather.x);
-	float g = densityHeightGradient(height_fraction, 1.0);
+	float g = densityHeightGradient(height_fraction, 0.5);
 	float base_cloud = remap(n.r, -(1.0-fbm), 1.0, 0.0, 1.0);
-	float cloud_coverage = weather.x;
+	float cloud_coverage = smoothstep(0.6, 1.3, weather.x);
 	base_cloud = remap(base_cloud*g, 1.0-cloud_coverage, 1.0, 0.0, 1.0); 
 	base_cloud *= cloud_coverage;
 	if (hq) {
 		vec2 whisp = texture(curl, p.xy*0.0003).xy;
 		p.xy += whisp*400.0*(1.0-height_fraction);
-		vec3 hn = texture(worl, p*0.002, LOD-2.0).xyz;
+		vec3 hn = texture(worl, p*0.004, LOD-2.0).xyz;
 		float hfbm = hn.r*0.625+hn.g*0.25+hn.b*0.125;
 		hfbm = mix(hfbm, 1.0-hfbm, clamp(height_fraction*3.0, 0.0, 1.0));
 		base_cloud = remap(base_cloud, hfbm*0.2, 1.0, 0.0, 1.0);
@@ -332,18 +331,18 @@ vec4 march(const vec3 pos, const vec3 end, vec3 dir, const int depth) {
 	int count=0;
 	float t = 1.0;
 	float costheta = dot(normalize(ldir), normalize(dir));
-	float phase = max(max(HG(costheta, 0.6), HG(costheta, (0.99-1.3*normalize(ldir).y))), HG(costheta, -0.5));
+	float phase = max(max(HG(costheta, 0.6), HG(costheta, (0.99-1.3*normalize(ldir).y))), HG(costheta, -0.3));
 	for (int i=0;i<depth;i++) {
 		p += dir;
 		float height_fraction = GetHeightFractionForPoint(length(p));
-		const float weather_scale = 0.00004;
+		const float weather_scale = 0.00008;
 		vec3 weather_sample = texture(weather, p.xz*weather_scale).xyz;
 		t = density(p, weather_sample, true, 0.0);
-		const float ldt = 0.4;
+		const float ldt = 0.5;
 		float dt = exp(-ldt*t*ss);
 		T *= dt;		
 		vec3 lp = p;
-		const float ld = 1.0;
+		const float ld = 0.5;
 		float lt = 1.0;
 		float ncd = 0.0;
 		float cd = 0.0;
@@ -364,8 +363,8 @@ vec4 march(const vec3 pos, const vec3 end, vec3 dir, const int depth) {
 		float beers = max(exp(-ld*ncd*lss), exp(-ld*0.25*ncd*lss)*0.7);
 		float powshug = 1.0-exp(-ld*ncd*lss*2.0);
 
-		vec3 ambient = 9.0*vAmbient*mix(0.15, 1.0, height_fraction);
-		vec3 sunC = vSunColor;
+		vec3 ambient = 5.0*vAmbient*mix(0.15, 1.0, height_fraction);
+		vec3 sunC = pow(vSunColor, vec3(0.75));
 		L += (ambient+sunC*beers*powshug*2.0*phase)*(t)*T*ss;		
 		alpha += (1.0-dt)*(1.0-alpha);
 		}

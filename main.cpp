@@ -1,3 +1,6 @@
+//TODO Change the weather map, all channels should be allowed to reach 0 at certain points
+//change the raymarch, do only weather/density samples at first then switch to noise samples
+
 #include <iostream>
 #include <stdlib.h> 
 
@@ -77,7 +80,6 @@ int main()
     Shader ourShader("sky.vert", "sky.frag");
 		Shader postShader("tex.vert", "tex.frag");
 		Shader upscaleShader("upscale.vert", "upscale.frag");
-		//Shader preethamShader("pree.vert", "pree.frag");
 
     GLfloat vertices[] = {
  			 -1.0f, -1.0f,
